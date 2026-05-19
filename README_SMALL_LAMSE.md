@@ -41,9 +41,12 @@ The `000000` token is intentional. `train.py` parses the initial batch number fr
 On Stanford Sherlock, create the recommended module/venv environment with:
 
 ```bash
+sh_dev
 bash scripts/setup_sherlock_env.sh
-source "${SCRATCH}/venvs/graphcast-small-lamse/activate_graphcast_small_lamse.sh"
+source "${GROUP_HOME:-${SCRATCH}}/venvs/graphcast-small-lamse/activate_graphcast_small_lamse.sh"
 ```
+
+The setup follows Sherlock's Python guidance: use modules plus `python3 -m venv`, install packages inside the activated venv, and run package installation from a compute node.
 
 Run local parser tests first:
 
