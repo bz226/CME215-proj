@@ -1,0 +1,15 @@
+# Python/runtime artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.benchmarks/
+
+# Local model/data artifacts
+params/
+*.ckpt
+*.opt
+
+# Local logs and generated outputs
+runs/
+logs/
+*.log

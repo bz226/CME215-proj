@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+GRAPHCAST_DIR="${GRAPHCAST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+CHECKPOINT="${CHECKPOINT:-params/graphcast_small_lamse.000000.npz}"
+ANALYSIS_PATH="${ANALYSIS_PATH:-/path/to/era5_or_weatherbench_1deg}"
+NORM_FACTORS="${NORM_FACTORS:-stats}"
+LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.0}"
+BATCH_SIZE="${BATCH_SIZE:-1}"
+BATCH_NUMBER="${BATCH_NUMBER:-100}"
+FORECAST_LENGTH="${FORECAST_LENGTH:-1}"
+START_DATE="${START_DATE:-1 Jan 2016 00:00}"
+END_DATE="${END_DATE:-31 Dec 2017 18:00}"
+LEARNING_RATE="${LEARNING_RATE:-1e-6}"
+
+cd "${GRAPHCAST_DIR}"
+
+PYTHONPATH=. python train.py \
+  --model-checkpoint "${CHECKPOINT}" \
+  --apath "${ANALYSIS_PATH}" \
+  --norm-factors "${NORM_FACTORS}" \
+  --start-date "${START_DATE}" \
+  --end-date "${END_DATE}" \
+  --forecast-length "${FORECAST_LENGTH}" \
+  --batch-size "${BATCH_SIZE}" \
+  --batch-number "${BATCH_NUMBER}" \
+  --checkpoint-every "${BATCH_NUMBER}" \
+  --learning-rate "${LEARNING_RATE}" \
+  --lamse \
+  --lamse-lambda "${LAMSE_LAMBDA}"
