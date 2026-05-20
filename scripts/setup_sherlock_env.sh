@@ -40,6 +40,7 @@ OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 XLA_FLAGS="${XLA_FLAGS:---xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1}"
+JAX_PLATFORMS="${JAX_PLATFORMS:-cuda}"
 
 log() {
   printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -172,6 +173,7 @@ source "${ENV_DIR}/bin/activate"
 export PYTHONPATH="${PROJECT_DIR}:\${PYTHONPATH:-}"
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export JAX_ENABLE_X64=True
+export JAX_PLATFORMS="${JAX_PLATFORMS}"
 export XLA_FLAGS="${XLA_FLAGS}"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS}"
 export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS}"
@@ -185,6 +187,7 @@ chmod +x "${ACTIVATE_FILE}"
 export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export JAX_ENABLE_X64=True
+export JAX_PLATFORMS="${JAX_PLATFORMS}"
 export XLA_FLAGS="${XLA_FLAGS}"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS}"
 export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS}"
@@ -202,6 +205,7 @@ import xarray
 import haiku
 import optax
 print("jax", jax.__version__)
+print("x64", jax.config.jax_enable_x64)
 print("jax devices", jax.devices())
 print("s2fft", getattr(s2fft, "__version__", "unknown"))
 print("healpy", healpy.__version__)
