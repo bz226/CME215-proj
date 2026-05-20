@@ -64,6 +64,24 @@ SMOKE_JAX_PLATFORMS=cpu bash scripts/setup_sherlock_env.sh
 
 Use the generated activation helper unchanged for GPU training jobs; it still sets `JAX_PLATFORMS=cuda`.
 
+Sherlock Slurm wrappers are included:
+
+```bash
+# Build/update the local .venv-sherlock environment as a batch job.
+sbatch scripts/sbatch_setup_env.sh
+
+# Stage WeatherBench 2 ERA5 data on CPU/network resources.
+DATA_DIR=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+  sbatch scripts/sbatch_fetch_training_data.sh
+
+# Open an interactive GPU allocation for debugging.
+bash scripts/srun_gpu_shell.sh
+
+# Submit the 100-batch LAMSE/AMSE gate.
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LAMSE_LAMBDA=0.0 \
+  sbatch scripts/sbatch_lamse_100_batches.sh
+```
+
 Run local parser tests first:
 
 ```bash
@@ -79,6 +97,24 @@ PYTHONPATH=. pytest tests/test_needlet_construction.py tests/test_lamse_loss.py 
 ## 100-Batch Gates
 
 From this folder, after preparing the checkpoint and a compatible 1 degree ERA5/WeatherBench data path:
+
+Stage the data before requesting a GPU:
+
+```bash
+DATA_DIR=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+  sbatch scripts/sbatch_fetch_training_data.sh
+```
+
+The staged layout is `DATA_DIR/YYYY/MM`, matching the loader's `ANALYSIS_PATH/*/*` monthly zarr expectation. The default staging window covers the current 100-batch gate dates plus one 6-hour input/target buffer.
+
+For batch submission on Sherlock:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LAMSE_LAMBDA=0.0 \
+  sbatch scripts/sbatch_lamse_100_batches.sh
+```
+
+Use `LAMSE_LAMBDA=0.1` only after the lambda-zero gate is stable.
 
 ```bash
 PYTHONPATH=. python train.py \

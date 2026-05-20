@@ -8,6 +8,7 @@ venv/
 
 # Local model/data artifacts
 params/
+data/
 *.ckpt
 *.opt
 
