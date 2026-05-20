@@ -53,11 +53,11 @@ fi
 
 source .venv-sherlock/activate_graphcast_small_lamse.sh
 
-python scripts/download_graphcast_small.py
-python scripts/prepare_graphcast_small_checkpoint.py
+python -u scripts/download_graphcast_small.py
+python -u scripts/prepare_graphcast_small_checkpoint.py
 
 JAX_PLATFORMS=cpu \
-python scripts/download_weatherbench2_era5_1deg.py \
+python -u scripts/download_weatherbench2_era5_1deg.py \
   --output-dir "${DATA_DIR}" \
   --train-start "${START_DATE}" \
   --train-end "${END_DATE}" \

@@ -198,6 +198,14 @@ export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS}"
 export TF_CPP_MIN_LOG_LEVEL=1
 export PYTHONUNBUFFERED=True
 
+log "Running non-JAX import smoke checks"
+python - <<'PY'
+import numba
+import forecast.encabulator
+import forecast.toa_radiation
+print("numba", numba.__version__)
+PY
+
 if [[ "${RUN_JAX_SMOKE}" == "1" ]]; then
   export JAX_PLATFORMS="${SMOKE_JAX_PLATFORMS}"
   log "Running import smoke checks with JAX_PLATFORMS=${JAX_PLATFORMS}"

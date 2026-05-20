@@ -96,6 +96,11 @@ try:
 
         return buf_out
 except ImportError:
+    raise ImportError(
+        "forecast.encabulator requires numba. Install the Sherlock requirements "
+        "or run: python -m pip install 'llvmlite==0.43.0' 'numba==0.60.0'"
+    ) from None
+
     # numba isn't available, so define vector functions as a fallback
     def quantizer(buf,nbits,plane_min,plane_max):
         '''Encode buffer through quantization and linear prediction, using per-layer minima
