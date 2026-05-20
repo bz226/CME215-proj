@@ -12,19 +12,29 @@ FORECAST_LENGTH="${FORECAST_LENGTH:-1}"
 START_DATE="${START_DATE:-1 Jan 2016 00:00}"
 END_DATE="${END_DATE:-31 Dec 2017 18:00}"
 LEARNING_RATE="${LEARNING_RATE:-1e-6}"
+CSV_PATH="${CSV_PATH:-}"
 
 cd "${GRAPHCAST_DIR}"
 
-PYTHONPATH=. python train.py \
-  --model-checkpoint "${CHECKPOINT}" \
-  --apath "${ANALYSIS_PATH}" \
-  --norm-factors "${NORM_FACTORS}" \
-  --start-date "${START_DATE}" \
-  --end-date "${END_DATE}" \
-  --forecast-length "${FORECAST_LENGTH}" \
-  --batch-size "${BATCH_SIZE}" \
-  --batch-number "${BATCH_NUMBER}" \
-  --checkpoint-every "${BATCH_NUMBER}" \
-  --learning-rate "${LEARNING_RATE}" \
-  --lamse \
+train_args=(
+  train.py
+  --model-checkpoint "${CHECKPOINT}"
+  --apath "${ANALYSIS_PATH}"
+  --norm-factors "${NORM_FACTORS}"
+  --start-date "${START_DATE}"
+  --end-date "${END_DATE}"
+  --forecast-length "${FORECAST_LENGTH}"
+  --batch-size "${BATCH_SIZE}"
+  --batch-number "${BATCH_NUMBER}"
+  --checkpoint-every "${BATCH_NUMBER}"
+  --learning-rate "${LEARNING_RATE}"
+  --lamse
   --lamse-lambda "${LAMSE_LAMBDA}"
+)
+
+if [[ -n "${CSV_PATH}" ]]; then
+  mkdir -p "$(dirname "${CSV_PATH}")"
+  train_args+=(--to-csv "${CSV_PATH}")
+fi
+
+PYTHONPATH=. python "${train_args[@]}"

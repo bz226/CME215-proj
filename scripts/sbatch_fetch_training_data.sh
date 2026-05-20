@@ -20,6 +20,11 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_DIR}"
 
+LOG_DIR="${LOG_DIR:-${PROJECT_DIR}/logs}"
+mkdir -p "${LOG_DIR}"
+LOG_FILE="${LOG_FILE:-${LOG_DIR}/${SLURM_JOB_NAME:-gc-lamse-data}-${SLURM_JOB_ID:-manual}.log}"
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
 DEFAULT_DATA_DIR="${SCRATCH:-${PROJECT_DIR}/data}/graphcast-small-lamse/era5_1deg_weatherbench2"
 DATA_DIR="${DATA_DIR:-${DEFAULT_DATA_DIR}}"
 START_DATE="${START_DATE:-1 Jan 2016 00:00}"
@@ -27,6 +32,7 @@ END_DATE="${END_DATE:-31 Dec 2017 18:00}"
 FORECAST_LENGTH="${FORECAST_LENGTH:-1}"
 THREADS="${THREADS:-${SLURM_CPUS_PER_TASK:-8}}"
 
+echo "Log file: ${LOG_FILE}"
 echo "Job ID: ${SLURM_JOB_ID:-unknown}"
 echo "Node: ${SLURMD_NODENAME:-unknown}"
 echo "Project: ${PROJECT_DIR}"

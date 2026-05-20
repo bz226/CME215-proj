@@ -21,8 +21,17 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_DIR}"
 
+LOG_DIR="${LOG_DIR:-${PROJECT_DIR}/logs}"
+mkdir -p "${LOG_DIR}"
+LOG_FILE="${LOG_FILE:-${LOG_DIR}/${SLURM_JOB_NAME:-gc-lamse-100}-${SLURM_JOB_ID:-manual}.log}"
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/runs}"
+mkdir -p "${OUTPUT_DIR}"
 DEFAULT_DATA_DIR="${SCRATCH:-${PROJECT_DIR}/data}/graphcast-small-lamse/era5_1deg_weatherbench2"
 ANALYSIS_PATH="${ANALYSIS_PATH:-${DATA_DIR:-${DEFAULT_DATA_DIR}}}"
+LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.0}"
+CSV_PATH="${CSV_PATH:-${OUTPUT_DIR}/lamse_${LAMSE_LAMBDA}_job_${SLURM_JOB_ID:-manual}.csv}"
 
 if [[ -z "${ANALYSIS_PATH:-}" ]]; then
   cat >&2 <<'EOF'
@@ -54,11 +63,13 @@ EOF
   exit 2
 fi
 
+echo "Log file: ${LOG_FILE}"
+echo "CSV file: ${CSV_PATH}"
 echo "Job ID: ${SLURM_JOB_ID:-unknown}"
 echo "Node: ${SLURMD_NODENAME:-unknown}"
 echo "Project: ${PROJECT_DIR}"
 echo "ANALYSIS_PATH=${ANALYSIS_PATH}"
-echo "LAMSE_LAMBDA=${LAMSE_LAMBDA:-0.0}"
+echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   nvidia-smi
@@ -88,8 +99,9 @@ PY
 python scripts/prepare_graphcast_small_checkpoint.py
 python scripts/inspect_graphcast_checkpoint.py
 
-LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.0}" \
+LAMSE_LAMBDA="${LAMSE_LAMBDA}" \
 ANALYSIS_PATH="${ANALYSIS_PATH}" \
+CSV_PATH="${CSV_PATH}" \
 BATCH_SIZE="${BATCH_SIZE:-1}" \
 BATCH_NUMBER="${BATCH_NUMBER:-100}" \
 FORECAST_LENGTH="${FORECAST_LENGTH:-1}" \

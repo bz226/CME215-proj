@@ -114,6 +114,8 @@ ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LAMSE_LAMBD
   sbatch scripts/sbatch_lamse_100_batches.sh
 ```
 
+The `sbatch` wrappers write project-local logs to `logs/*.log`. The training wrapper also writes per-example losses to `runs/lamse_<lambda>_job_<jobid>.csv` unless `CSV_PATH` is set.
+
 Use `LAMSE_LAMBDA=0.1` only after the lambda-zero gate is stable.
 
 ```bash
