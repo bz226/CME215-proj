@@ -50,6 +50,20 @@ The setup follows Sherlock's Python guidance: use modules plus `python3 -m venv`
 
 The activation helper sets `JAX_PLATFORMS=cuda`, `JAX_ENABLE_X64=True`, and conservative thread limits. Run JAX smoke tests from a GPU allocation; CPU-only device discovery can fail on constrained Sherlock allocations.
 
+If setting up from a CPU-only allocation, skip the CUDA smoke check:
+
+```bash
+RUN_JAX_SMOKE=0 bash scripts/setup_sherlock_env.sh
+```
+
+or run the smoke check against CPU explicitly:
+
+```bash
+SMOKE_JAX_PLATFORMS=cpu bash scripts/setup_sherlock_env.sh
+```
+
+Use the generated activation helper unchanged for GPU training jobs; it still sets `JAX_PLATFORMS=cuda`.
+
 Run local parser tests first:
 
 ```bash

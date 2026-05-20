@@ -41,6 +41,8 @@ MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 XLA_FLAGS="${XLA_FLAGS:---xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1}"
 JAX_PLATFORMS="${JAX_PLATFORMS:-cuda}"
+SMOKE_JAX_PLATFORMS="${SMOKE_JAX_PLATFORMS:-${JAX_PLATFORMS}}"
+RUN_JAX_SMOKE="${RUN_JAX_SMOKE:-1}"
 
 log() {
   printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -196,8 +198,10 @@ export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS}"
 export TF_CPP_MIN_LOG_LEVEL=1
 export PYTHONUNBUFFERED=True
 
-log "Running import smoke checks"
-python - <<'PY'
+if [[ "${RUN_JAX_SMOKE}" == "1" ]]; then
+  export JAX_PLATFORMS="${SMOKE_JAX_PLATFORMS}"
+  log "Running import smoke checks with JAX_PLATFORMS=${JAX_PLATFORMS}"
+  python - <<'PY'
 import jax
 import s2fft
 import healpy
@@ -213,6 +217,9 @@ print("xarray", xarray.__version__)
 print("haiku", haiku.__version__)
 print("optax", optax.__version__)
 PY
+else
+  log "Skipping JAX smoke check because RUN_JAX_SMOKE=${RUN_JAX_SMOKE}"
+fi
 
 log "Running lightweight repo test"
 cd "${PROJECT_DIR}"
