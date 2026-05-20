@@ -43,10 +43,10 @@ On Stanford Sherlock, create the recommended module/venv environment with:
 ```bash
 sh_dev
 bash scripts/setup_sherlock_env.sh
-source "${GROUP_HOME:-${SCRATCH}}/venvs/graphcast-small-lamse/activate_graphcast_small_lamse.sh"
+source .venv-sherlock/activate_graphcast_small_lamse.sh
 ```
 
-The setup follows Sherlock's Python guidance: use modules plus `python3 -m venv`, install packages inside the activated venv, and run package installation from a compute node.
+The setup follows Sherlock's Python guidance: use modules plus `python3 -m venv`, install packages inside the activated venv, and run package installation from a compute node. By default, it creates the environment locally at `.venv-sherlock/` inside this project directory. Sherlock's available Python modules include `3.12.1`, which is the default used by `setup_sherlock_env.sh`; avoid `3.9.0` for this JAX/GraphCast stack and avoid `3.14.2` because scientific wheels may lag behind it.
 
 Run local parser tests first:
 

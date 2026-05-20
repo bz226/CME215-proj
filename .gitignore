@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .benchmarks/
+.venv*/
+venv/
 
 # Local model/data artifacts
 params/

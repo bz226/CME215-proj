@@ -381,7 +381,7 @@ dependencies:
       - dm-tree==0.1.8
       - eccodes==1.7.1
       - ecmwf-api-client==1.6.3
-      - ecmwflibs==0.6.3
+      - ecmwflibs==0.7.0
       - etils==1.9.2
       - findlibs==0.0.5
       - flax==0.8.5

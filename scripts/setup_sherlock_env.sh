@@ -7,7 +7,7 @@
 #   bash scripts/setup_sherlock_env.sh
 #
 # Optional overrides:
-#   ENV_DIR=$GROUP_HOME/venvs/graphcast-small-lamse bash scripts/setup_sherlock_env.sh
+#   ENV_DIR=/path/to/local/venv bash scripts/setup_sherlock_env.sh
 #   PYTHON_MODULE=python/3.12.1 CUDA_MODULE=cuda/12.6.1 GCC_MODULE=gcc/12.4.0 bash scripts/setup_sherlock_env.sh
 #
 # Notes:
@@ -23,9 +23,8 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEFAULT_ENV_BASE="${GROUP_HOME:-${SCRATCH:-$HOME}}"
-ENV_DIR="${ENV_DIR:-${DEFAULT_ENV_BASE}/venvs/graphcast-small-lamse}"
-PYTHON_MODULE="${PYTHON_MODULE:-python/3.11}"
+ENV_DIR="${ENV_DIR:-${PROJECT_DIR}/.venv-sherlock}"
+PYTHON_MODULE="${PYTHON_MODULE:-python/3.12.1}"
 CUDA_MODULE="${CUDA_MODULE:-cuda/12.6.1}"
 GCC_MODULE="${GCC_MODULE:-gcc/12.4.0}"
 CUDNN_MODULE="${CUDNN_MODULE:-}"
@@ -33,6 +32,9 @@ NCCL_MODULE="${NCCL_MODULE:-}"
 JAX_CUDA_EXTRA="${JAX_CUDA_EXTRA:-cuda12-local}"
 INSTALL_CARTOPY="${INSTALL_CARTOPY:-0}"
 REQUIREMENTS_FILE="${REQUIREMENTS_FILE:-${PROJECT_DIR}/scripts/requirements_sherlock.txt}"
+NUMPY_VERSION="${NUMPY_VERSION:-1.26.4}"
+SCIPY_VERSION="${SCIPY_VERSION:-1.12.0}"
+ML_DTYPES_VERSION="${ML_DTYPES_VERSION:-0.4.0}"
 
 log() {
   printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -120,6 +122,13 @@ source "${ENV_DIR}/bin/activate"
 
 log "Upgrading packaging tools"
 python -m pip install --upgrade pip setuptools wheel
+
+log "Installing binary NumPy/SciPy stack before JAX"
+python -m pip install --only-binary=:all: \
+  "numpy==${NUMPY_VERSION}" \
+  "scipy==${SCIPY_VERSION}" \
+  "ml-dtypes==${ML_DTYPES_VERSION}" \
+  "opt-einsum==3.3.0"
 
 log "Installing JAX for Sherlock CUDA modules: jax[${JAX_CUDA_EXTRA}]==0.4.30"
 python -m pip install --upgrade "jax[${JAX_CUDA_EXTRA}]==0.4.30"
