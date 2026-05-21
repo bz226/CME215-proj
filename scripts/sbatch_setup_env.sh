@@ -4,10 +4,10 @@
 #
 # Purpose:
 #   Build/update the project-local .venv-sherlock environment on a Sherlock
-#   compute node. This uses a CPU allocation and skips CUDA device discovery.
+#   compute node. This uses a CPU batch allocation and skips CUDA device discovery.
 
 #SBATCH --job-name=gc-lamse-env
-#SBATCH --partition=dev
+#SBATCH --partition=normal
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
