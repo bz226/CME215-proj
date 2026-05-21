@@ -109,6 +109,7 @@ EOF
 fi
 
 source .venv-sherlock/activate_graphcast_small_lamse.sh
+export JAX_ENABLE_X64=1
 
 python - <<'PY'
 import jax
@@ -117,6 +118,7 @@ print("x64", jax.config.jax_enable_x64)
 print("devices", jax.devices())
 PY
 
+python -u scripts/download_graphcast_stats.py
 python scripts/prepare_graphcast_small_checkpoint.py
 python scripts/inspect_graphcast_checkpoint.py
 

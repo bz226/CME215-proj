@@ -26,12 +26,21 @@ Download the proposal checkpoint:
 python3 scripts/download_graphcast_small.py
 python3 scripts/prepare_graphcast_small_checkpoint.py
 python3 scripts/inspect_graphcast_checkpoint.py
+python3 scripts/download_graphcast_stats.py
 ```
 
 The prepared path is:
 
 ```text
 params/graphcast_small_lamse.000000.npz
+```
+
+Training also requires the GraphCast normalization files in `stats/`:
+
+```text
+stats/diffs_stddev_by_level.nc
+stats/mean_by_level.nc
+stats/stddev_by_level.nc
 ```
 
 The `000000` token is intentional. `train.py` parses the initial batch number from the token immediately before the file extension.
