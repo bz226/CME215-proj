@@ -8,7 +8,7 @@
 #
 # Optional overrides:
 #   ENV_DIR=/path/to/local/venv bash scripts/setup_sherlock_env.sh
-#   PYTHON_MODULE=python/3.12.1 CUDA_MODULE=cuda/12.6.1 GCC_MODULE=gcc/12.4.0 bash scripts/setup_sherlock_env.sh
+#   PYTHON_MODULE=python/3.12.1 GCC_MODULE=gcc/12.4.0 bash scripts/setup_sherlock_env.sh
 #
 # Notes:
 # - Sherlock recommends module-provided system libraries plus Python venvs over
@@ -17,19 +17,22 @@
 #   example via `sh_dev`, not from a login node.
 # - Inside an activated venv, do not use `pip install --user`; pip installs into
 #   the venv directory.
-# - Module versions change. If PYTHON_MODULE or CUDA_MODULE is unavailable,
-#   run `ml av python` and `ml av cuda` on Sherlock and rerun with overrides.
+# - JAX uses pip-bundled CUDA/cuDNN by default because Sherlock GPU nodes can
+#   expose different driver/toolkit combinations. Set CUDA_MODULE and
+#   JAX_CUDA_EXTRA=cuda12-local only if you intentionally want local CUDA libs.
+# - Module versions change. If PYTHON_MODULE is unavailable,
+#   run `ml av python` and rerun with overrides.
 
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_DIR="${ENV_DIR:-${PROJECT_DIR}/.venv-sherlock}"
 PYTHON_MODULE="${PYTHON_MODULE:-python/3.12.1}"
-CUDA_MODULE="${CUDA_MODULE:-cuda/12.6.1}"
+CUDA_MODULE="${CUDA_MODULE:-}"
 GCC_MODULE="${GCC_MODULE:-gcc/12.4.0}"
 CUDNN_MODULE="${CUDNN_MODULE:-}"
 NCCL_MODULE="${NCCL_MODULE:-}"
-JAX_CUDA_EXTRA="${JAX_CUDA_EXTRA:-cuda12-local}"
+JAX_CUDA_EXTRA="${JAX_CUDA_EXTRA:-cuda12}"
 INSTALL_CARTOPY="${INSTALL_CARTOPY:-0}"
 REQUIREMENTS_FILE="${REQUIREMENTS_FILE:-${PROJECT_DIR}/scripts/requirements_sherlock.txt}"
 NUMPY_VERSION="${NUMPY_VERSION:-1.26.4}"
@@ -75,7 +78,7 @@ On Sherlock, check available modules with:
   ml av nccl
 
 Then rerun with overrides, for example:
-  PYTHON_MODULE=python/<version> CUDA_MODULE=cuda/<version> GCC_MODULE=gcc/<version> bash scripts/setup_sherlock_env.sh
+  PYTHON_MODULE=python/<version> GCC_MODULE=gcc/<version> bash scripts/setup_sherlock_env.sh
 
 EOF
   exit 1
@@ -119,7 +122,7 @@ log "CUDA compiler, if available"
 if command -v nvcc >/dev/null 2>&1; then
   nvcc --version | tail -n 1
 else
-  echo "nvcc not found; continuing because some CUDA modules expose runtime libraries only."
+  echo "nvcc not found; continuing because JAX installs CUDA runtime libraries via pip."
 fi
 
 log "Creating virtual environment at ${ENV_DIR}"
@@ -159,8 +162,10 @@ if ! command -v ml >/dev/null 2>&1 && [[ -f /etc/profile.d/modules.sh ]]; then
 fi
 ml reset
 ml load ${PYTHON_MODULE}
-ml load ${CUDA_MODULE}
 EOF
+if [[ -n "${CUDA_MODULE}" ]]; then
+  echo "ml load ${CUDA_MODULE}" >> "${ACTIVATE_FILE}"
+fi
 if [[ -n "${GCC_MODULE}" ]]; then
   echo "ml load ${GCC_MODULE}" >> "${ACTIVATE_FILE}"
 fi

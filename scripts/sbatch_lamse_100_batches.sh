@@ -133,9 +133,11 @@ export JAX_ENABLE_X64=1
 
 python - <<'PY'
 import jax
+import jax.numpy as jnp
 print("jax", jax.__version__)
 print("x64", jax.config.jax_enable_x64)
 print("devices", jax.devices())
+print("tiny gpu op", (jnp.asarray([1.0], dtype=jnp.float32) + 1.0).block_until_ready())
 PY
 
 python -u scripts/download_graphcast_stats.py
