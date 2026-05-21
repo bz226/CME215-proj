@@ -10,6 +10,7 @@
 #SBATCH --job-name=gc-lamse-100
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
+#SBATCH --constraint=GPU_MEM:80GB
 #SBATCH --time=04:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=96G
@@ -53,6 +54,7 @@ DEFAULT_DATA_DIR="${SCRATCH:-${PROJECT_DIR}/data}/graphcast-small-lamse/era5_1de
 ANALYSIS_PATH="${ANALYSIS_PATH:-${DATA_DIR:-${DEFAULT_DATA_DIR}}}"
 LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.0}"
 CSV_PATH="${CSV_PATH:-${OUTPUT_DIR}/lamse_${LAMSE_LAMBDA}_job_${SLURM_JOB_ID:-manual}.csv}"
+MIN_GPU_MEM_MB="${MIN_GPU_MEM_MB:-40000}"
 
 if [[ -z "${ANALYSIS_PATH:-}" ]]; then
   cat >&2 <<'EOF'
@@ -94,6 +96,24 @@ echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   nvidia-smi
+  GPU_MEM_MB="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -n 1 | tr -d ' ')"
+  if ! [[ "${GPU_MEM_MB}" =~ ^[0-9]+$ ]]; then
+    echo "Could not parse GPU memory from nvidia-smi: ${GPU_MEM_MB}" >&2
+    exit 2
+  fi
+  if [[ "${GPU_MEM_MB}" -lt "${MIN_GPU_MEM_MB}" ]]; then
+    cat >&2 <<EOF
+Allocated GPU has ${GPU_MEM_MB} MiB, below MIN_GPU_MEM_MB=${MIN_GPU_MEM_MB}.
+
+This GraphCast Small + AMSE/LAMSE gate should run on a modern high-memory GPU.
+Resubmit with an explicit Sherlock GPU constraint, for example:
+  sbatch -C GPU_MEM:80GB scripts/sbatch_lamse_100_batches.sh
+
+If your account uses a different owner partition or feature names, inspect:
+  sh_node_feat -p gpu | grep GPU_
+EOF
+    exit 2
+  fi
 else
   echo "nvidia-smi not found in PATH"
 fi
