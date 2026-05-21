@@ -17,7 +17,28 @@
 
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -z "${PROJECT_DIR:-}" ]]; then
+  if [[ -n "${SLURM_SUBMIT_DIR:-}" && -f "${SLURM_SUBMIT_DIR}/scripts/download_weatherbench2_era5_1deg.py" ]]; then
+    PROJECT_DIR="${SLURM_SUBMIT_DIR}"
+  else
+    PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  fi
+fi
+
+if [[ ! -f "${PROJECT_DIR}/scripts/download_weatherbench2_era5_1deg.py" ]]; then
+  cat >&2 <<EOF
+Could not locate the graphcast-small-lamse project directory.
+
+Submit from the project root:
+  cd /path/to/graphcast-small-lamse
+  sbatch scripts/sbatch_fetch_training_data.sh
+
+Or pass PROJECT_DIR explicitly:
+  PROJECT_DIR=/path/to/graphcast-small-lamse sbatch scripts/sbatch_fetch_training_data.sh
+EOF
+  exit 2
+fi
+
 cd "${PROJECT_DIR}"
 
 LOG_DIR="${LOG_DIR:-${PROJECT_DIR}/logs}"
