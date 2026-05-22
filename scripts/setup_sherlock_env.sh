@@ -206,9 +206,13 @@ export PYTHONUNBUFFERED=True
 log "Running non-JAX import smoke checks"
 python - <<'PY'
 import numba
+import rtree
+import trimesh
 import forecast.encabulator
 import forecast.toa_radiation
 print("numba", numba.__version__)
+print("rtree", rtree.__version__)
+print("trimesh", trimesh.__version__)
 PY
 
 if [[ "${RUN_JAX_SMOKE}" == "1" ]]; then
