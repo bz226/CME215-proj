@@ -7,7 +7,7 @@
 #   compute node. This uses a CPU batch allocation and skips CUDA device discovery.
 
 #SBATCH --job-name=gc-lamse-env
-#SBATCH --partition=normal
+#SBATCH --partition=serc
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G

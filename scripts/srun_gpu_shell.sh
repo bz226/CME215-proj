@@ -5,16 +5,16 @@
 #   bash scripts/srun_gpu_shell.sh
 #
 # Optional overrides:
-#   PARTITION=gpu GPUS=1 TIME=02:00:00 CPUS=8 MEM=64G bash scripts/srun_gpu_shell.sh
+#   PARTITION=serc GPUS=1 TIME=02:00:00 CPUS=8 MEM=256G bash scripts/srun_gpu_shell.sh
 #   CONSTRAINT='GPU_MEM:80GB' bash scripts/srun_gpu_shell.sh
 
 set -euo pipefail
 
-PARTITION="${PARTITION:-gpu}"
+PARTITION="${PARTITION:-serc}"
 GPUS="${GPUS:-1}"
 TIME="${TIME:-02:00:00}"
 CPUS="${CPUS:-8}"
-MEM="${MEM:-64G}"
+MEM="${MEM:-256G}"
 CONSTRAINT="${CONSTRAINT:-}"
 
 cmd=(

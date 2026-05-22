@@ -8,7 +8,7 @@
 #   This is a CPU/network job; do not spend a GPU allocation on data staging.
 
 #SBATCH --job-name=gc-lamse-data
-#SBATCH --partition=normal
+#SBATCH --partition=serc
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G

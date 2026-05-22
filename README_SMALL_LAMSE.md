@@ -125,7 +125,7 @@ ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LOSS_MODE=a
 
 The `sbatch` wrappers write project-local logs to `logs/*.log`. The training wrapper also writes per-example losses to `runs/<loss_mode>_<lambda>_job_<jobid>.csv` unless `CSV_PATH` is set.
 
-The training `sbatch` script requests `GPU_MEM:80GB` by default. If Sherlock rejects that feature for your account or partition, list available GPU features with:
+The Sherlock wrappers submit to the `serc` partition by default. The training `sbatch` script requests `GPU_MEM:80GB` and `256G` host RAM by default. If Sherlock rejects that feature for your account or partition, list available GPU features with:
 
 ```bash
 sh_node_feat -p gpu | grep GPU_

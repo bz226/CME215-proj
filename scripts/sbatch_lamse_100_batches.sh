@@ -12,12 +12,12 @@
 #     sbatch scripts/sbatch_lamse_100_batches.sh
 
 #SBATCH --job-name=gc-lamse-100
-#SBATCH --partition=gpu
+#SBATCH --partition=serc
 #SBATCH --gpus=1
 #SBATCH --constraint=GPU_MEM:80GB
 #SBATCH --time=04:00:00
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=96G
+#SBATCH --mem=256G
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
@@ -168,6 +168,7 @@ CSV_PATH="${CSV_PATH}" \
 BATCH_SIZE="${BATCH_SIZE:-1}" \
 BATCH_NUMBER="${BATCH_NUMBER:-100}" \
 FORECAST_LENGTH="${FORECAST_LENGTH:-1}" \
+NUM_PRELOAD="${NUM_PRELOAD:-1}" \
 START_DATE="${START_DATE:-1 Jan 2016 00:00}" \
 END_DATE="${END_DATE:-31 Dec 2017 18:00}" \
 LEARNING_RATE="${LEARNING_RATE:-1e-6}" \
