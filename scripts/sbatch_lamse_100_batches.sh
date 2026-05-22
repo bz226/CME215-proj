@@ -146,7 +146,7 @@ source .venv-sherlock/activate_graphcast_small_lamse.sh
 export JAX_ENABLE_X64=1
 export JAX_PLATFORMS="${JAX_PLATFORMS:-cuda,cpu}"
 
-python - <<'PY'
+python3 - <<'PY'
 import jax
 import jax.numpy as jnp
 print("jax", jax.__version__)
@@ -156,12 +156,13 @@ print("cpu devices", jax.devices("cpu"))
 print("tiny gpu op", (jnp.asarray([1.0], dtype=jnp.float32) + 1.0).block_until_ready())
 PY
 
-python -u scripts/download_graphcast_stats.py
-python scripts/prepare_graphcast_small_checkpoint.py
-python scripts/inspect_graphcast_checkpoint.py
+python3 -u scripts/download_graphcast_stats.py
+python3 scripts/prepare_graphcast_small_checkpoint.py
+python3 scripts/inspect_graphcast_checkpoint.py
 
 LAMSE_LAMBDA="${LAMSE_LAMBDA}" \
 LOSS_MODE="${LOSS_MODE}" \
+PYTHON_BIN="${PYTHON_BIN:-python3}" \
 ANALYSIS_PATH="${ANALYSIS_PATH}" \
 CSV_PATH="${CSV_PATH}" \
 BATCH_SIZE="${BATCH_SIZE:-1}" \

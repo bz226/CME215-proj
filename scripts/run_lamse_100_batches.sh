@@ -2,6 +2,7 @@
 set -euo pipefail
 
 GRAPHCAST_DIR="${GRAPHCAST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 CHECKPOINT="${CHECKPOINT:-params/graphcast_small_lamse.000000.npz}"
 ANALYSIS_PATH="${ANALYSIS_PATH:-/path/to/era5_or_weatherbench_1deg}"
 NORM_FACTORS="${NORM_FACTORS:-stats}"
@@ -17,6 +18,22 @@ CSV_PATH="${CSV_PATH:-}"
 LAMSE_LMAX="${LAMSE_LMAX:-}"
 
 cd "${GRAPHCAST_DIR}"
+
+if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
+  echo "Missing Python executable: ${PYTHON_BIN}" >&2
+  echo "Activate the Sherlock venv first: source .venv-sherlock/activate_graphcast_small_lamse.sh" >&2
+  exit 2
+fi
+
+"${PYTHON_BIN}" - <<'PY'
+import sys
+if sys.version_info < (3, 10):
+    raise SystemExit(
+        f"Python >= 3.10 is required, got {sys.version}. "
+        "Activate .venv-sherlock/activate_graphcast_small_lamse.sh first."
+    )
+print("python", sys.version.split()[0])
+PY
 
 train_args=(
   train.py
@@ -55,4 +72,4 @@ if [[ -n "${CSV_PATH}" ]]; then
   train_args+=(--to-csv "${CSV_PATH}")
 fi
 
-PYTHONPATH=. python "${train_args[@]}"
+PYTHONPATH=. "${PYTHON_BIN}" "${train_args[@]}"
