@@ -80,6 +80,15 @@ def derived_variables(ds, compute_wind_speed):
     return ds_out
 
 
+def align_target_dims(prediction, targets):
+    """Transpose each target variable to the matching prediction variable dims."""
+
+    aligned = targets.copy()
+    for name in set(prediction.data_vars).intersection(targets.data_vars):
+        aligned[name] = targets[name].transpose(*prediction[name].dims)
+    return aligned
+
+
 def losses_over_time(forecast, targets, analysis, per_variable_weights, norm_fn):
     from graphcast import xarray_jax
     from graphcast import losses
@@ -246,8 +255,7 @@ def make_loss_new(
         def my_loss(prediction, targets):
             prediction = derived_variables(prediction, compute_wind_speed)
             targets = derived_variables(targets, compute_wind_speed)
-            first_var = next(iter(prediction.data_vars))
-            targets = targets.transpose(*prediction[first_var].dims)
+            targets = align_target_dims(prediction, targets)
             amse_loss, amse_diag = spectral_adj_loss(
                 prediction,
                 targets,
