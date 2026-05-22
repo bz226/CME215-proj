@@ -86,8 +86,8 @@ DATA_DIR=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
 # Open an interactive GPU allocation for debugging.
 bash scripts/srun_gpu_shell.sh
 
-# Submit the 100-batch LAMSE/AMSE gate.
-ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LAMSE_LAMBDA=0.0 \
+# Submit the pure AMSE 100-batch gate.
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LOSS_MODE=amse \
   sbatch scripts/sbatch_lamse_100_batches.sh
 ```
 
@@ -116,14 +116,14 @@ DATA_DIR=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
 
 The staged layout is `DATA_DIR/YYYY/MM`, matching the loader's `ANALYSIS_PATH/*/*` monthly zarr expectation. The default staging window covers the current 100-batch gate dates plus one 6-hour input/target buffer.
 
-For batch submission on Sherlock:
+For pure AMSE batch submission on Sherlock:
 
 ```bash
-ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LAMSE_LAMBDA=0.0 \
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LOSS_MODE=amse \
   sbatch scripts/sbatch_lamse_100_batches.sh
 ```
 
-The `sbatch` wrappers write project-local logs to `logs/*.log`. The training wrapper also writes per-example losses to `runs/lamse_<lambda>_job_<jobid>.csv` unless `CSV_PATH` is set.
+The `sbatch` wrappers write project-local logs to `logs/*.log`. The training wrapper also writes per-example losses to `runs/<loss_mode>_<lambda>_job_<jobid>.csv` unless `CSV_PATH` is set.
 
 The training `sbatch` script requests `GPU_MEM:80GB` by default. If Sherlock rejects that feature for your account or partition, list available GPU features with:
 
@@ -131,7 +131,23 @@ The training `sbatch` script requests `GPU_MEM:80GB` by default. If Sherlock rej
 sh_node_feat -p gpu | grep GPU_
 ```
 
-Use `LAMSE_LAMBDA=0.1` only after the lambda-zero gate is stable.
+Then test the lambda-zero LAMSE path separately. This should match pure AMSE behavior while exercising the `--lamse --lamse-lambda 0.0` route:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+LOSS_MODE=lamse LAMSE_LAMBDA=0.0 \
+  sbatch scripts/sbatch_lamse_100_batches.sh
+```
+
+Use `LAMSE_LAMBDA=0.1` only after the pure-AMSE and lambda-zero gates are stable.
+
+For the first nonzero LAMSE gate, start with a reduced needlet bandlimit to keep host RAM bounded:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+LOSS_MODE=lamse LAMSE_LAMBDA=0.1 LAMSE_LMAX=32 \
+  sbatch scripts/sbatch_lamse_100_batches.sh
+```
 
 ```bash
 PYTHONPATH=. python train.py \

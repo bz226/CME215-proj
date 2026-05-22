@@ -218,7 +218,7 @@ def make_loss_new(
 
         lamse_precompute = None
         lamse_config = None
-        if lamse:
+        if lamse and config_dict["lamse_lambda"] != 0.0:
             from config import LAMSEConfig
             import lamse_loss
 
@@ -233,6 +233,15 @@ def make_loss_new(
                 model_longitude.data,
                 lamse_config,
             )
+        elif lamse:
+            from config import LAMSEConfig
+
+            lamse_config = LAMSEConfig(
+                lambda_lamse=config_dict["lamse_lambda"],
+                L=config_dict["lamse_lmax"],
+            )
+            if not silent:
+                print("Skipping LAMSE HEALPix/needlet geometry because lamse_lambda=0.0")
 
         def my_loss(prediction, targets):
             prediction = derived_variables(prediction, compute_wind_speed)
