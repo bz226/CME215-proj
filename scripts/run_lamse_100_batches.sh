@@ -20,6 +20,11 @@ LAMSE_LMAX="${LAMSE_LMAX:-}"
 
 cd "${GRAPHCAST_DIR}"
 
+# train.py needs both backends: CPU for canonical params and CUDA for gradients.
+if [[ -z "${JAX_PLATFORMS:-}" || "${JAX_PLATFORMS}" == "cuda" ]]; then
+  export JAX_PLATFORMS="cuda,cpu"
+fi
+
 if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
   echo "Missing Python executable: ${PYTHON_BIN}" >&2
   echo "Activate the Sherlock venv first: source .venv-sherlock/activate_graphcast_small_lamse.sh" >&2

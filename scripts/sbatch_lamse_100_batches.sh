@@ -144,7 +144,9 @@ fi
 
 source .venv-sherlock/activate_graphcast_small_lamse.sh
 export JAX_ENABLE_X64=1
-export JAX_PLATFORMS="${JAX_PLATFORMS:-cuda,cpu}"
+# train.py keeps canonical parameters on CPU and evaluates gradients on GPU.
+# Force both backends because older activation helpers may export cuda only.
+export JAX_PLATFORMS="${JAX_PLATFORMS_OVERRIDE:-cuda,cpu}"
 
 python3 - <<'PY'
 import jax
