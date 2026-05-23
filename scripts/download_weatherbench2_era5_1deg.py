@@ -21,7 +21,7 @@ from pathlib import Path
 
 DEFAULT_SOURCE = (
     "gs://weatherbench2/datasets/era5/"
-    "1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2"
+    "1959-2023_01_10-full_37-1h-0p25deg-chunk-1.zarr"
 )
 DEFAULT_CHECKPOINT = Path("params/graphcast_small_lamse.000000.npz")
 DEFAULT_OUTPUT_DIR = Path("data/era5_1deg_weatherbench2")
