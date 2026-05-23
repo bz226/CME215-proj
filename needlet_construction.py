@@ -80,11 +80,30 @@ def build_needlet_geometry(config: LAMSEConfig, latitudes: Sequence[float]) -> N
     max_degree = int(config.L) if config.L is not None else int(len(latitudes) - 1)
     bandlimit = max_degree + 1
     filters = needlet_filters(max_degree, config)
+    max_healpix_nside = _max_nside_for_bandlimit(bandlimit)
     input_nside = config.input_nside or _nside_for_degree(max_degree)
-    output_nside = config.output_nside or max(
+    if input_nside > max_healpix_nside:
+        raise ValueError(
+            f"LAMSE input_nside={input_nside} is too high for s2fft bandlimit "
+            f"L={bandlimit}; HEALPix requires L >= 2*nside. Increase "
+            f"--lamse-lmax to at least {2 * input_nside - 1} or lower input_nside."
+        )
+
+    auto_output_nside = max(
         _nside_for_degree(config.B ** (j + 1))
         for j in _scale_exponents(max_degree, config)
     )
+    if config.output_nside is None:
+        output_nside = min(auto_output_nside, max_healpix_nside)
+    else:
+        output_nside = config.output_nside
+        if output_nside > max_healpix_nside:
+            raise ValueError(
+                f"LAMSE output_nside={output_nside} is too high for s2fft "
+                f"bandlimit L={bandlimit}; HEALPix requires L >= 2*nside. "
+                f"Increase --lamse-lmax to at least {2 * output_nside - 1} "
+                "or lower output_nside."
+            )
 
     theta, phi = healpix_centers(output_nside)
     coarse_theta, coarse_phi, coarse_area = coarse_grid(config.coarse_lat, config.coarse_lon)
@@ -174,6 +193,18 @@ def _nside_for_degree(degree: float) -> int:
     required = max(1, int(math.ceil((float(degree) + 1.0) / 3.0)))
     nside = 1
     while nside < required:
+        nside *= 2
+    return nside
+
+
+def _max_nside_for_bandlimit(bandlimit: int) -> int:
+    """Largest power-of-two HEALPix nside supported by s2fft for this L."""
+
+    if bandlimit < 2:
+        raise ValueError("HEALPix s2fft transforms require bandlimit L >= 2.")
+    limit = bandlimit // 2
+    nside = 1
+    while nside * 2 <= limit:
         nside *= 2
     return nside
 

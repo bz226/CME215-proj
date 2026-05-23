@@ -17,6 +17,9 @@ NUM_PRELOAD="${NUM_PRELOAD:-1}"
 LEARNING_RATE="${LEARNING_RATE:-1e-6}"
 CSV_PATH="${CSV_PATH:-}"
 LAMSE_LMAX="${LAMSE_LMAX:-}"
+if [[ "${LOSS_MODE}" == "lamse" && -z "${LAMSE_LMAX}" ]]; then
+  LAMSE_LMAX="${LAMSE_DEFAULT_LMAX:-32}"
+fi
 
 cd "${GRAPHCAST_DIR}"
 
@@ -40,6 +43,12 @@ if sys.version_info < (3, 10):
     )
 print("python", sys.version.split()[0])
 PY
+
+echo "LOSS_MODE=${LOSS_MODE}"
+if [[ "${LOSS_MODE}" == "lamse" ]]; then
+  echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
+  echo "LAMSE_LMAX=${LAMSE_LMAX}"
+fi
 
 train_args=(
   train.py

@@ -97,7 +97,7 @@ Expected bottlenecks:
 - `s2fft` forward transform on the input HEALPix grid.
 - Per-scale inverse transforms to the common output HEALPix grid.
 
-If wall-clock exceeds 3x AMSE in the target GPU environment, first reduce `--lamse-lmax`, `coarse_lat/coarse_lon`, or the output HEALPix `Nside`, then profile the `s2fft` forward/inverse calls.
+The HEALPix `s2fft` path requires `L >= 2*nside`. Automatic input/output `nside` choices are capped to this limit. If wall-clock exceeds 3x AMSE in the target GPU environment, first reduce `--lamse-lmax`, `coarse_lat/coarse_lon`, or the output HEALPix `Nside`, then profile the `s2fft` forward/inverse calls.
 
 ## Next Validation Steps
 
@@ -108,4 +108,4 @@ Run in the intended GPU environment with `s2fft` and `healpy` installed:
 3. Synthetic longitude-shift ratio; record the exact LAMSE/AMSE value here.
 4. One forward/backward timing comparison against AMSE.
 5. 100 batches with `--lamse --lamse-lambda 0.0`.
-6. 100 batches with `--lamse --lamse-lambda 0.1`.
+6. 100 batches with `--lamse --lamse-lambda 0.01 --lamse-lmax 32`.

@@ -37,7 +37,7 @@ python train.py --spectral-amse ...
 Hybrid local spectral loss:
 
 ```bash
-python train.py --lamse --lamse-lambda 0.1 ...
+python train.py --lamse --lamse-lambda 0.01 --lamse-lmax 32 ...
 ```
 
 Lambda-zero equivalence gate:
@@ -52,6 +52,8 @@ The lambda-zero run should match AMSE behavior before any longer LAMSE training 
 
 - Added LAMSE modules: `config.py`, `needlet_construction.py`, `needlet_transform.py`, `lamse_loss.py`.
 - Updated `trainer/loss_utils.py` with `--lamse`, `--lamse-lambda`, and `--lamse-lmax`.
+- Capped automatic HEALPix `nside` choices so `s2fft` always satisfies `L >= 2*nside`.
+- Sherlock LAMSE wrappers default to `LAMSE_LMAX=32` when `LOSS_MODE=lamse` and no explicit bandlimit is set.
 - Added `healpy` and `s2fft` to `environment.yml`.
 - Updated `forecast/models.py` so `era5_100` points at `params/graphcast_small_lamse.000000.npz`.
 - Added checkpoint helper scripts under `scripts/`.

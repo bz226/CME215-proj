@@ -58,6 +58,10 @@ DEFAULT_DATA_DIR="${SCRATCH:-${PROJECT_DIR}/data}/graphcast-small-lamse/era5_1de
 ANALYSIS_PATH="${ANALYSIS_PATH:-${DATA_DIR:-${DEFAULT_DATA_DIR}}}"
 LOSS_MODE="${LOSS_MODE:-amse}"
 LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.0}"
+LAMSE_LMAX="${LAMSE_LMAX:-}"
+if [[ "${LOSS_MODE}" == "lamse" && -z "${LAMSE_LMAX}" ]]; then
+  LAMSE_LMAX="${LAMSE_DEFAULT_LMAX:-32}"
+fi
 CSV_PATH="${CSV_PATH:-${OUTPUT_DIR}/${LOSS_MODE}_${LAMSE_LAMBDA}_job_${SLURM_JOB_ID:-manual}.csv}"
 MIN_GPU_MEM_MB="${MIN_GPU_MEM_MB:-40000}"
 
@@ -107,6 +111,9 @@ echo "Project: ${PROJECT_DIR}"
 echo "ANALYSIS_PATH=${ANALYSIS_PATH}"
 echo "LOSS_MODE=${LOSS_MODE}"
 echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
+if [[ "${LOSS_MODE}" == "lamse" ]]; then
+  echo "LAMSE_LMAX=${LAMSE_LMAX}"
+fi
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   nvidia-smi
@@ -174,5 +181,5 @@ NUM_PRELOAD="${NUM_PRELOAD:-1}" \
 START_DATE="${START_DATE:-1 Jan 2016 00:00}" \
 END_DATE="${END_DATE:-31 Dec 2017 18:00}" \
 LEARNING_RATE="${LEARNING_RATE:-1e-6}" \
-LAMSE_LMAX="${LAMSE_LMAX:-}" \
+LAMSE_LMAX="${LAMSE_LMAX}" \
 scripts/run_lamse_100_batches.sh
