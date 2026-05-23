@@ -93,8 +93,15 @@ def scalar_diagnostics(**values):
     """Build scalar diagnostics without converting traced JAX values to NumPy."""
 
     from graphcast import xarray_jax
+    import xarray as xr
 
-    return xarray_jax.Dataset({name: ((), value) for name, value in values.items()})
+    data_vars = {}
+    for name, value in values.items():
+        if isinstance(value, (xr.DataArray, xr.Variable)):
+            data_vars[name] = (value.dims, xarray_jax.unwrap_data(value))
+        else:
+            data_vars[name] = ((), value)
+    return xarray_jax.Dataset(data_vars)
 
 
 def losses_over_time(forecast, targets, analysis, per_variable_weights, norm_fn):
