@@ -89,6 +89,14 @@ def align_target_dims(prediction, targets):
     return aligned
 
 
+def scalar_diagnostics(**values):
+    """Build scalar diagnostics without converting traced JAX values to NumPy."""
+
+    from graphcast import xarray_jax
+
+    return xarray_jax.Dataset({name: ((), value) for name, value in values.items()})
+
+
 def losses_over_time(forecast, targets, analysis, per_variable_weights, norm_fn):
     from graphcast import xarray_jax
     from graphcast import losses
@@ -280,9 +288,16 @@ def make_loss_new(
             lam = lamse_config.lambda_lamse
             hybrid = (1.0 - lam) * amse_loss + lam * local_loss
             hybrid_diag = (1.0 - lam) * amse_diag + lam * local_diag
-            hybrid_diag["amse_total"] = amse_loss
-            hybrid_diag["lamse_total"] = local_loss
-            hybrid_diag["hybrid_total"] = hybrid
+            hybrid_diag = xr.merge(
+                [
+                    hybrid_diag,
+                    scalar_diagnostics(
+                        amse_total=amse_loss,
+                        lamse_total=local_loss,
+                        hybrid_total=hybrid,
+                    ),
+                ]
+            )
             return hybrid, hybrid_diag
 
     elif mae_error:
