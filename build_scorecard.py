@@ -3,9 +3,13 @@
 ## Helper class to store a forecast sequence, noting its initialization date and the current
 ## set of inputs (t-6h, t0), used to initialize a new prediction
 import dataclasses
+import os
 from typing import Optional
 import numpy as np
 import xarray as xr
+
+if os.environ.get("JAX_PLATFORMS", "") in ("", "cuda"):
+    os.environ["JAX_PLATFORMS"] = "cuda,cpu"
 
 
 def unwrap_ds(in_ds):

@@ -1,3 +1,8 @@
+import os
+
+if os.environ.get("JAX_PLATFORMS", "") in ("", "cuda"):
+    os.environ["JAX_PLATFORMS"] = "cuda,cpu"
+
 import xarray as xr
 import numpy as np
 import numcodecs
