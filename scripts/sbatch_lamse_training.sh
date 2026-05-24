@@ -54,7 +54,16 @@ ANALYSIS_PATH="${ANALYSIS_PATH:-${DATA_DIR:-${DEFAULT_DATA_DIR}}}"
 LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.1}"
 LAMSE_LMAX="${LAMSE_LMAX:-32}"
 LAMSE_TAG="${LAMSE_TAG:-lam${LAMSE_LAMBDA//./p}_lmax${LAMSE_LMAX}}"
-CHECKPOINT="${CHECKPOINT:-params/graphcast_small_lamse_${LAMSE_TAG}.000000.npz}"
+if [[ -n "${SCRATCH:-}" ]]; then
+  DEFAULT_PARAMS_DIR="${SCRATCH}/graphcast-small-lamse/params"
+else
+  DEFAULT_PARAMS_DIR="${PROJECT_DIR}/params"
+fi
+PARAMS_DIR="${PARAMS_DIR:-${DEFAULT_PARAMS_DIR}}"
+export PARAMS_DIR
+mkdir -p "${PARAMS_DIR}"
+CHECKPOINT="${CHECKPOINT:-${PARAMS_DIR}/graphcast_small_lamse_${LAMSE_TAG}.000000.npz}"
+SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT:-${PARAMS_DIR}/graphcast_small_lamse.000000.npz}"
 CSV_PATH="${CSV_PATH:-${OUTPUT_DIR}/lamse_${LAMSE_TAG}_full_job_${SLURM_JOB_ID:-manual}.csv}"
 MIN_GPU_MEM_MB="${MIN_GPU_MEM_MB:-40000}"
 BATCH_NUMBER="${BATCH_NUMBER:-1000}"
@@ -82,8 +91,10 @@ echo "Job ID: ${SLURM_JOB_ID:-unknown}"
 echo "Node: ${SLURMD_NODENAME:-unknown}"
 echo "Project: ${PROJECT_DIR}"
 echo "ANALYSIS_PATH=${ANALYSIS_PATH}"
+echo "PARAMS_DIR=${PARAMS_DIR}"
 echo "LOSS_MODE=lamse"
 echo "CHECKPOINT=${CHECKPOINT}"
+echo "SOURCE_CHECKPOINT=${SOURCE_CHECKPOINT}"
 echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
 echo "LAMSE_LMAX=${LAMSE_LMAX}"
 echo "BATCH_NUMBER=${BATCH_NUMBER}"
@@ -136,8 +147,9 @@ print("tiny gpu op", (jnp.asarray([1.0], dtype=jnp.float32) + 1.0).block_until_r
 PY
 
 PYTHON_BIN="${PYTHON_BIN:-python3}" \
+PARAMS_DIR="${PARAMS_DIR}" \
 CHECKPOINT="${CHECKPOINT}" \
-SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT:-params/graphcast_small_lamse.000000.npz}" \
+SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT}" \
 ANALYSIS_PATH="${ANALYSIS_PATH}" \
 CSV_PATH="${CSV_PATH}" \
 BATCH_SIZE="${BATCH_SIZE:-1}" \

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
 import sys
 import warnings
 from pathlib import Path
@@ -23,8 +24,18 @@ DEFAULT_SOURCE = (
     "gs://weatherbench2/datasets/era5/"
     "1959-2023_01_10-full_37-1h-0p25deg-chunk-1.zarr"
 )
-DEFAULT_CHECKPOINT = Path("params/graphcast_small_lamse.000000.npz")
 DEFAULT_OUTPUT_DIR = Path("data/era5_1deg_weatherbench2")
+
+
+def default_params_dir() -> Path:
+    if os.environ.get("PARAMS_DIR"):
+        return Path(os.environ["PARAMS_DIR"]).expanduser()
+    if os.environ.get("SCRATCH"):
+        return Path(os.environ["SCRATCH"]) / "graphcast-small-lamse" / "params"
+    return Path("params")
+
+
+DEFAULT_CHECKPOINT = default_params_dir() / "graphcast_small_lamse.000000.npz"
 
 
 def parse_date(value: str) -> dt.datetime:

@@ -11,8 +11,15 @@ set -euo pipefail
 
 GRAPHCAST_DIR="${GRAPHCAST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
-CHECKPOINT="${CHECKPOINT:-params/graphcast_small_amse.000000.npz}"
-SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT:-params/graphcast_small_lamse.000000.npz}"
+if [[ -n "${SCRATCH:-}" ]]; then
+  DEFAULT_PARAMS_DIR="${SCRATCH}/graphcast-small-lamse/params"
+else
+  DEFAULT_PARAMS_DIR="${GRAPHCAST_DIR}/params"
+fi
+PARAMS_DIR="${PARAMS_DIR:-${DEFAULT_PARAMS_DIR}}"
+export PARAMS_DIR
+CHECKPOINT="${CHECKPOINT:-${PARAMS_DIR}/graphcast_small_amse.000000.npz}"
+SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT:-${PARAMS_DIR}/graphcast_small_lamse.000000.npz}"
 DEFAULT_DATA_DIR="${SCRATCH:-${GRAPHCAST_DIR}/data}/graphcast-small-lamse/era5_1deg_weatherbench2"
 ANALYSIS_PATH="${ANALYSIS_PATH:-${DATA_DIR:-${DEFAULT_DATA_DIR}}}"
 NORM_FACTORS="${NORM_FACTORS:-stats}"
@@ -29,6 +36,7 @@ CSV_PATH="${CSV_PATH:-runs/amse_full_${SLURM_JOB_ID:-manual}.csv}"
 SEED="${SEED:-0}"
 
 cd "${GRAPHCAST_DIR}"
+mkdir -p "${PARAMS_DIR}"
 
 # train.py needs both backends: CPU for canonical params and CUDA for gradients.
 if [[ -z "${JAX_PLATFORMS:-}" || "${JAX_PLATFORMS}" == "cuda" ]]; then
@@ -69,13 +77,13 @@ fi
 if [[ ! -f "${CHECKPOINT}" ]]; then
   if [[ "${CHECKPOINT}" == *".000000.npz" ]]; then
     if [[ ! -f "${SOURCE_CHECKPOINT}" ]]; then
-      "${PYTHON_BIN}" scripts/download_graphcast_small.py
+      "${PYTHON_BIN}" scripts/download_graphcast_small.py --output-dir "${PARAMS_DIR}"
       "${PYTHON_BIN}" scripts/prepare_graphcast_small_checkpoint.py --target "${SOURCE_CHECKPOINT}"
     fi
     "${PYTHON_BIN}" scripts/prepare_graphcast_small_checkpoint.py \
       --source "${SOURCE_CHECKPOINT}" \
       --target "${CHECKPOINT}" \
-      --mode copy
+      --mode symlink
   else
     echo "Missing non-initial checkpoint: ${CHECKPOINT}" >&2
     exit 2
@@ -85,7 +93,9 @@ fi
 "${PYTHON_BIN}" -u scripts/download_graphcast_stats.py
 
 echo "LOSS_MODE=amse"
+echo "PARAMS_DIR=${PARAMS_DIR}"
 echo "CHECKPOINT=${CHECKPOINT}"
+echo "SOURCE_CHECKPOINT=${SOURCE_CHECKPOINT}"
 echo "ANALYSIS_PATH=${ANALYSIS_PATH}"
 echo "BATCH_SIZE=${BATCH_SIZE}"
 echo "BATCH_NUMBER=${BATCH_NUMBER}"

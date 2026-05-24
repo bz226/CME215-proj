@@ -48,6 +48,14 @@ exec > >(tee -a "${LOG_FILE}") 2>&1
 
 DEFAULT_DATA_DIR="${SCRATCH:-${PROJECT_DIR}/data}/graphcast-small-lamse/era5_1deg_weatherbench2"
 DATA_DIR="${DATA_DIR:-${DEFAULT_DATA_DIR}}"
+if [[ -n "${SCRATCH:-}" ]]; then
+  DEFAULT_PARAMS_DIR="${SCRATCH}/graphcast-small-lamse/params"
+else
+  DEFAULT_PARAMS_DIR="${PROJECT_DIR}/params"
+fi
+PARAMS_DIR="${PARAMS_DIR:-${DEFAULT_PARAMS_DIR}}"
+export PARAMS_DIR
+mkdir -p "${PARAMS_DIR}"
 SOURCE="${SOURCE:-gs://weatherbench2/datasets/era5/1959-2023_01_10-full_37-1h-0p25deg-chunk-1.zarr}"
 START_DATE="${START_DATE:-1 Jan 2016 00:00}"
 END_DATE="${END_DATE:-31 Dec 2017 18:00}"
@@ -59,6 +67,7 @@ echo "Job ID: ${SLURM_JOB_ID:-unknown}"
 echo "Node: ${SLURMD_NODENAME:-unknown}"
 echo "Project: ${PROJECT_DIR}"
 echo "DATA_DIR=${DATA_DIR}"
+echo "PARAMS_DIR=${PARAMS_DIR}"
 echo "SOURCE=${SOURCE}"
 echo "START_DATE=${START_DATE}"
 echo "END_DATE=${END_DATE}"
@@ -76,13 +85,14 @@ fi
 
 source .venv-sherlock/activate_graphcast_small_lamse.sh
 
-python -u scripts/download_graphcast_small.py
+python -u scripts/download_graphcast_small.py --output-dir "${PARAMS_DIR}"
 python -u scripts/prepare_graphcast_small_checkpoint.py
 
 JAX_PLATFORMS=cpu \
 python -u scripts/download_weatherbench2_era5_1deg.py \
   --source "${SOURCE}" \
   --output-dir "${DATA_DIR}" \
+  --checkpoint "${PARAMS_DIR}/graphcast_small_lamse.000000.npz" \
   --train-start "${START_DATE}" \
   --train-end "${END_DATE}" \
   --forecast-length "${FORECAST_LENGTH}" \

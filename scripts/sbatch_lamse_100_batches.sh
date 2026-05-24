@@ -62,6 +62,15 @@ LAMSE_LMAX="${LAMSE_LMAX:-}"
 if [[ "${LOSS_MODE}" == "lamse" && -z "${LAMSE_LMAX}" ]]; then
   LAMSE_LMAX="${LAMSE_DEFAULT_LMAX:-32}"
 fi
+if [[ -n "${SCRATCH:-}" ]]; then
+  DEFAULT_PARAMS_DIR="${SCRATCH}/graphcast-small-lamse/params"
+else
+  DEFAULT_PARAMS_DIR="${PROJECT_DIR}/params"
+fi
+PARAMS_DIR="${PARAMS_DIR:-${DEFAULT_PARAMS_DIR}}"
+export PARAMS_DIR
+mkdir -p "${PARAMS_DIR}"
+CHECKPOINT="${CHECKPOINT:-${PARAMS_DIR}/graphcast_small_lamse.000000.npz}"
 CSV_PATH="${CSV_PATH:-${OUTPUT_DIR}/${LOSS_MODE}_${LAMSE_LAMBDA}_job_${SLURM_JOB_ID:-manual}.csv}"
 MIN_GPU_MEM_MB="${MIN_GPU_MEM_MB:-40000}"
 
@@ -109,7 +118,9 @@ echo "Job ID: ${SLURM_JOB_ID:-unknown}"
 echo "Node: ${SLURMD_NODENAME:-unknown}"
 echo "Project: ${PROJECT_DIR}"
 echo "ANALYSIS_PATH=${ANALYSIS_PATH}"
+echo "PARAMS_DIR=${PARAMS_DIR}"
 echo "LOSS_MODE=${LOSS_MODE}"
+echo "CHECKPOINT=${CHECKPOINT}"
 echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
 if [[ "${LOSS_MODE}" == "lamse" ]]; then
   echo "LAMSE_LMAX=${LAMSE_LMAX}"
@@ -166,11 +177,14 @@ print("tiny gpu op", (jnp.asarray([1.0], dtype=jnp.float32) + 1.0).block_until_r
 PY
 
 python3 -u scripts/download_graphcast_stats.py
+python3 -u scripts/download_graphcast_small.py --output-dir "${PARAMS_DIR}"
 python3 scripts/prepare_graphcast_small_checkpoint.py
 python3 scripts/inspect_graphcast_checkpoint.py
 
 LAMSE_LAMBDA="${LAMSE_LAMBDA}" \
 LOSS_MODE="${LOSS_MODE}" \
+PARAMS_DIR="${PARAMS_DIR}" \
+CHECKPOINT="${CHECKPOINT}" \
 PYTHON_BIN="${PYTHON_BIN:-python3}" \
 ANALYSIS_PATH="${ANALYSIS_PATH}" \
 CSV_PATH="${CSV_PATH}" \

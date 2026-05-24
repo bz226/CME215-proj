@@ -18,11 +18,22 @@ At `--lamse-lambda 0.0`, the loss returns the AMSE branch directly.
 - `environment.yml` adds `healpy` and `s2fft`.
 - `tests/` contains synthetic LAMSE and CLI tests copied from the active LAMSE implementation.
 
+The Sherlock wrappers pass explicit `--model-checkpoint` paths under `PARAMS_DIR`, so training does not need to store large `.npz` files in the project home directory.
+
 ## Checkpoint
+
+On Sherlock, keep model checkpoints in scratch rather than the project home directory. The scripts default to:
+
+```text
+$SCRATCH/graphcast-small-lamse/params
+```
+
+Override with `PARAMS_DIR=/some/scratch/path` if needed. Local runs without `SCRATCH` still fall back to `params/`.
 
 Download the proposal checkpoint:
 
 ```bash
+export PARAMS_DIR=${PARAMS_DIR:-$SCRATCH/graphcast-small-lamse/params}
 python3 scripts/download_graphcast_small.py
 python3 scripts/prepare_graphcast_small_checkpoint.py
 python3 scripts/inspect_graphcast_checkpoint.py
@@ -32,7 +43,7 @@ python3 scripts/download_graphcast_stats.py
 The prepared path is:
 
 ```text
-params/graphcast_small_lamse.000000.npz
+$PARAMS_DIR/graphcast_small_lamse.000000.npz
 ```
 
 Training also requires the GraphCast normalization files in `stats/`:
@@ -125,7 +136,7 @@ ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 LOSS_MODE=a
 
 For a true AMSE-only training run, use the dedicated wrapper. It always passes
 `--spectral-amse`, never passes `--lamse`, and saves AMSE checkpoints under
-`params/graphcast_small_amse.<batch>.npz`:
+`$PARAMS_DIR/graphcast_small_amse.<batch>.npz`:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
@@ -161,7 +172,7 @@ LOSS_MODE=lamse LAMSE_LAMBDA=0.1 LAMSE_LMAX=32 \
 
 ```bash
 PYTHONPATH=. python train.py \
-  --model-checkpoint params/graphcast_small_lamse.000000.npz \
+  --model-checkpoint $PARAMS_DIR/graphcast_small_lamse.000000.npz \
   --apath /path/to/era5_or_weatherbench_1deg \
   --norm-factors stats \
   --start-date "1 Jan 2016 00:00" \

@@ -251,6 +251,7 @@ To activate later:
 
 Then prepare the checkpoint:
   cd "${PROJECT_DIR}"
+  export PARAMS_DIR=\$SCRATCH/graphcast-small-lamse/params
   python scripts/download_graphcast_small.py
   python scripts/prepare_graphcast_small_checkpoint.py
   python scripts/inspect_graphcast_checkpoint.py

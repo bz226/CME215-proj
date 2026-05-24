@@ -52,7 +52,16 @@ OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/runs}"
 mkdir -p "${OUTPUT_DIR}"
 DEFAULT_DATA_DIR="${SCRATCH:-${PROJECT_DIR}/data}/graphcast-small-lamse/era5_1deg_weatherbench2"
 ANALYSIS_PATH="${ANALYSIS_PATH:-${DATA_DIR:-${DEFAULT_DATA_DIR}}}"
-CHECKPOINT="${CHECKPOINT:-params/graphcast_small_amse.000000.npz}"
+if [[ -n "${SCRATCH:-}" ]]; then
+  DEFAULT_PARAMS_DIR="${SCRATCH}/graphcast-small-lamse/params"
+else
+  DEFAULT_PARAMS_DIR="${PROJECT_DIR}/params"
+fi
+PARAMS_DIR="${PARAMS_DIR:-${DEFAULT_PARAMS_DIR}}"
+export PARAMS_DIR
+mkdir -p "${PARAMS_DIR}"
+CHECKPOINT="${CHECKPOINT:-${PARAMS_DIR}/graphcast_small_amse.000000.npz}"
+SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT:-${PARAMS_DIR}/graphcast_small_lamse.000000.npz}"
 CSV_PATH="${CSV_PATH:-${OUTPUT_DIR}/amse_full_job_${SLURM_JOB_ID:-manual}.csv}"
 MIN_GPU_MEM_MB="${MIN_GPU_MEM_MB:-40000}"
 BATCH_NUMBER="${BATCH_NUMBER:-1000}"
@@ -80,8 +89,10 @@ echo "Job ID: ${SLURM_JOB_ID:-unknown}"
 echo "Node: ${SLURMD_NODENAME:-unknown}"
 echo "Project: ${PROJECT_DIR}"
 echo "ANALYSIS_PATH=${ANALYSIS_PATH}"
+echo "PARAMS_DIR=${PARAMS_DIR}"
 echo "LOSS_MODE=amse"
 echo "CHECKPOINT=${CHECKPOINT}"
+echo "SOURCE_CHECKPOINT=${SOURCE_CHECKPOINT}"
 echo "BATCH_NUMBER=${BATCH_NUMBER}"
 echo "CHECKPOINT_EVERY=${CHECKPOINT_EVERY}"
 echo "OPT_CHECKPOINT_EVERY=${OPT_CHECKPOINT_EVERY}"
@@ -132,8 +143,9 @@ print("tiny gpu op", (jnp.asarray([1.0], dtype=jnp.float32) + 1.0).block_until_r
 PY
 
 PYTHON_BIN="${PYTHON_BIN:-python3}" \
+PARAMS_DIR="${PARAMS_DIR}" \
 CHECKPOINT="${CHECKPOINT}" \
-SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT:-params/graphcast_small_lamse.000000.npz}" \
+SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT}" \
 ANALYSIS_PATH="${ANALYSIS_PATH}" \
 CSV_PATH="${CSV_PATH}" \
 BATCH_SIZE="${BATCH_SIZE:-1}" \

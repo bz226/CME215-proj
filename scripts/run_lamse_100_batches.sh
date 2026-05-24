@@ -3,7 +3,14 @@ set -euo pipefail
 
 GRAPHCAST_DIR="${GRAPHCAST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
-CHECKPOINT="${CHECKPOINT:-params/graphcast_small_lamse.000000.npz}"
+if [[ -n "${SCRATCH:-}" ]]; then
+  DEFAULT_PARAMS_DIR="${SCRATCH}/graphcast-small-lamse/params"
+else
+  DEFAULT_PARAMS_DIR="${GRAPHCAST_DIR}/params"
+fi
+PARAMS_DIR="${PARAMS_DIR:-${DEFAULT_PARAMS_DIR}}"
+export PARAMS_DIR
+CHECKPOINT="${CHECKPOINT:-${PARAMS_DIR}/graphcast_small_lamse.000000.npz}"
 ANALYSIS_PATH="${ANALYSIS_PATH:-/path/to/era5_or_weatherbench_1deg}"
 NORM_FACTORS="${NORM_FACTORS:-stats}"
 LOSS_MODE="${LOSS_MODE:-amse}"
@@ -22,6 +29,7 @@ if [[ "${LOSS_MODE}" == "lamse" && -z "${LAMSE_LMAX}" ]]; then
 fi
 
 cd "${GRAPHCAST_DIR}"
+mkdir -p "${PARAMS_DIR}"
 
 # train.py needs both backends: CPU for canonical params and CUDA for gradients.
 if [[ -z "${JAX_PLATFORMS:-}" || "${JAX_PLATFORMS}" == "cuda" ]]; then
@@ -45,6 +53,8 @@ print("python", sys.version.split()[0])
 PY
 
 echo "LOSS_MODE=${LOSS_MODE}"
+echo "PARAMS_DIR=${PARAMS_DIR}"
+echo "CHECKPOINT=${CHECKPOINT}"
 if [[ "${LOSS_MODE}" == "lamse" ]]; then
   echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
   echo "LAMSE_LMAX=${LAMSE_LMAX}"

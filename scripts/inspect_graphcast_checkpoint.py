@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -12,9 +13,17 @@ def project_dir() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def params_dir() -> Path:
+    if os.environ.get("PARAMS_DIR"):
+        return Path(os.environ["PARAMS_DIR"]).expanduser()
+    if os.environ.get("SCRATCH"):
+        return Path(os.environ["SCRATCH"]) / "graphcast-small-lamse" / "params"
+    return project_dir() / "params"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint", type=Path, default=project_dir() / "params" / "graphcast_small_lamse.000000.npz")
+    parser.add_argument("--checkpoint", type=Path, default=params_dir() / "graphcast_small_lamse.000000.npz")
     return parser.parse_args()
 
 
