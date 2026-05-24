@@ -23,6 +23,8 @@ END_DATE="${END_DATE:-31 Dec 2017 18:00}"
 NUM_PRELOAD="${NUM_PRELOAD:-1}"
 LEARNING_RATE="${LEARNING_RATE:-1e-6}"
 CSV_PATH="${CSV_PATH:-}"
+FIRST_STEP_TIMEOUT="${FIRST_STEP_TIMEOUT:-1800}"
+WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-180}"
 LAMSE_LMAX="${LAMSE_LMAX:-}"
 if [[ "${LOSS_MODE}" == "lamse" && -z "${LAMSE_LMAX}" ]]; then
   LAMSE_LMAX="${LAMSE_DEFAULT_LMAX:-32}"
@@ -59,6 +61,8 @@ if [[ "${LOSS_MODE}" == "lamse" ]]; then
   echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
   echo "LAMSE_LMAX=${LAMSE_LMAX}"
 fi
+echo "FIRST_STEP_TIMEOUT=${FIRST_STEP_TIMEOUT}"
+echo "WATCHDOG_TIMEOUT=${WATCHDOG_TIMEOUT}"
 
 train_args=(
   train.py
@@ -73,6 +77,8 @@ train_args=(
   --num-preload "${NUM_PRELOAD}"
   --checkpoint-every "${BATCH_NUMBER}"
   --learning-rate "${LEARNING_RATE}"
+  --first-step-timeout "${FIRST_STEP_TIMEOUT}"
+  --watchdog-timeout "${WATCHDOG_TIMEOUT}"
 )
 
 case "${LOSS_MODE}" in

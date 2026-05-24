@@ -73,6 +73,8 @@ mkdir -p "${PARAMS_DIR}"
 CHECKPOINT="${CHECKPOINT:-${PARAMS_DIR}/graphcast_small_lamse.000000.npz}"
 CSV_PATH="${CSV_PATH:-${OUTPUT_DIR}/${LOSS_MODE}_${LAMSE_LAMBDA}_job_${SLURM_JOB_ID:-manual}.csv}"
 MIN_GPU_MEM_MB="${MIN_GPU_MEM_MB:-40000}"
+FIRST_STEP_TIMEOUT="${FIRST_STEP_TIMEOUT:-1800}"
+WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-180}"
 
 case "${LOSS_MODE}" in
   amse|lamse|mse) ;;
@@ -125,6 +127,8 @@ echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
 if [[ "${LOSS_MODE}" == "lamse" ]]; then
   echo "LAMSE_LMAX=${LAMSE_LMAX}"
 fi
+echo "FIRST_STEP_TIMEOUT=${FIRST_STEP_TIMEOUT}"
+echo "WATCHDOG_TIMEOUT=${WATCHDOG_TIMEOUT}"
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   nvidia-smi
@@ -195,5 +199,7 @@ NUM_PRELOAD="${NUM_PRELOAD:-1}" \
 START_DATE="${START_DATE:-1 Jan 2016 00:00}" \
 END_DATE="${END_DATE:-31 Dec 2017 18:00}" \
 LEARNING_RATE="${LEARNING_RATE:-1e-6}" \
+FIRST_STEP_TIMEOUT="${FIRST_STEP_TIMEOUT}" \
+WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT}" \
 LAMSE_LMAX="${LAMSE_LMAX}" \
 scripts/run_lamse_100_batches.sh

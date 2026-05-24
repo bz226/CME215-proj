@@ -28,11 +28,13 @@ After each user prompt in this job, update this file with:
 - The nonzero `LAMSE_LAMBDA=0.1`, `LAMSE_LMAX=32` 5000-batch LAMSE run is user-reported finished. Artifact/log verification is still the next step.
 - Large GraphCast checkpoints should now live under scratch by default: `$SCRATCH/graphcast-small-lamse/params`. The scripts also accept `PARAMS_DIR=...` for an explicit alternate scratch path.
 - Fine-tuning defaults use initialization dates `1 Jan 2016 00:00` through `31 Dec 2017 18:00`; the staged data can include adjacent 2015-12-31 and 2018-01-01 buffer times needed for inputs/targets, but the effective training init years are 2016-2017.
+- Current AMSE/LAMSE fine-tuning is single-step training: `scripts/run_amse_training.sh` and `scripts/run_lamse_training.sh` default `FORECAST_LENGTH=1`, and `train.py --forecast-length` is measured in 6-hour model steps. Thus each training example backpropagates through a 6h forecast. The January 2022 evaluation/plotting is multi-step rollout: `--forecast-length 240` in the evaluation scripts means 240 forecast hours, or 40 autoregressive 6h steps.
 - Current evaluation data are held out in 2022. January 2022 has completed as the smoke evaluation; full-year 2022 remains the intended main evaluation.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.
 - LAMSE-5000 should use the same `plot_prediction_error.py` workflow as AMSE-5000, with checkpoint `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz` and output directory `runs/prediction_error/lamse5000_20220101`.
 - A multi-model comparison script now exists for ground truth, pre-finetuned, AMSE-5000, LAMSE-0.1-5000, and optional extra checkpoints such as LAMSE-0.3-5000.
 - Next larger-LAMSE run should use `LAMSE_LAMBDA=0.3`, `LAMSE_LMAX=32`; this is a meaningful increase from `0.1` while keeping the objective partly anchored to AMSE.
+- The first observed `LAMSE_LAMBDA=0.3`, `LAMSE_LMAX=32` final job, `25960661`, did not train. Its log reached LAMSE geometry construction and started the first gradient compile, then `faulthandler` killed the process with `Timeout (0:10:00)!` inside JAX/XLA compilation before any `Received ... err=` lines, `Exiting` line, or final checkpoint. Treat this as a watchdog/compile-time failure, not a nonfinite-loss or model-quality result.
 - Current uploaded 10m wind speed comparison plots show no significant visible difference between AMSE-5000 and LAMSE-0.1-5000 at 6h, 120h, or 240h for the `2022-01-01 00:00` initialization. AMSE/LAMSE spectra nearly overlap; the clearer contrast is pre-finetuned under-amplification at higher wavenumbers. At 240h, AMSE and LAMSE both retain more high-wavenumber amplitude than pre-finetuned, but coherence is low/noisy and does not show a stable LAMSE advantage. Do not overclaim LAMSE-0.1 improvement from these plots alone.
 - Direct AMSE-vs-LAMSE delta views and pairwise improvement metrics are now needed for small effects; a larger-lambda LAMSE run remains the right next experiment.
 
@@ -76,6 +78,9 @@ After each user prompt in this job, update this file with:
   - falls back to a single global mask if `hurr_scorecard_mask` is unavailable.
 - `build_crpscard.py`
   - forces `JAX_PLATFORMS=cuda,cpu` when needed.
+- `train.py`, training runners, and Sherlock submit wrappers
+  - first-step watchdog is now configurable with `--first-step-timeout` / `FIRST_STEP_TIMEOUT`, defaulting to 1800 seconds instead of the old 600-second first-compile timeout;
+  - steady-state watchdog remains configurable with `--watchdog-timeout` / `WATCHDOG_TIMEOUT`, defaulting to 180 seconds.
 
 ## Immediate Next Steps
 
@@ -110,7 +115,7 @@ PY
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
-LOSS_MODE=lamse LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 \
+LOSS_MODE=lamse LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 FIRST_STEP_TIMEOUT=3600 \
   sbatch scripts/sbatch_lamse_100_batches.sh
 ```
 
@@ -120,7 +125,7 @@ Check the resulting `logs/gc-lamse-100-*.log` and `runs/lamse_0.3_job_*.csv` for
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
-LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 \
+LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 FIRST_STEP_TIMEOUT=3600 \
   bash scripts/submit_final_lamse.sh
 ```
 

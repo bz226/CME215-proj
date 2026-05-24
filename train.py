@@ -288,6 +288,12 @@ if __name__ == '__main__':
     debug_group.add_argument('--debug-memory',action='store_true',dest='debug_memory',default=False,help='Debug printouts (GPU memory use only)')
     debug_group.add_argument('--dry-run',action='store_true',dest='dry_run',default=False,help="Read and assemble data, but don't run the model")
     debug_group.add_argument('--compile-params',action='store_true',dest='compile_params',default=False,help='Compile the params_update function (testing)')
+    debug_group.add_argument('--first-step-timeout',type=int,dest='first_step_timeout',
+                        default=int(os.environ.get('GRAPHCAST_FIRST_STEP_TIMEOUT', '1800')),
+                        help='Watchdog timeout in seconds before the first completed gradient step')
+    debug_group.add_argument('--watchdog-timeout',type=int,dest='watchdog_timeout',
+                        default=int(os.environ.get('GRAPHCAST_WATCHDOG_TIMEOUT', '180')),
+                        help='Watchdog timeout in seconds after at least one gradient step has completed')
 
 
     args = parser.parse_args()
@@ -338,6 +344,10 @@ if __name__ == '__main__':
     dry_run = args.dry_run
     trainer.dataloader.debug_prints = debug_prints
     debug_print_memory = args.debug_memory
+    first_step_timeout = args.first_step_timeout
+    watchdog_timeout = args.watchdog_timeout
+    if (first_step_timeout <= 0 or watchdog_timeout <= 0):
+        raise ValueError('Watchdog timeouts must be positive')
 
     checkpoint_interval = args.checkpoint_interval
     opt_checkpoint_interval = args.opt_checkpoint_interval
@@ -638,9 +648,8 @@ if __name__ == '__main__':
 
     # Import faulthanlder, which will act as a watchdog to dump a stacktrace in the event that things hang
     import faulthandler
-    # Set the traceback to dump after 10 minutes, which should be long enough to accommodate any jax compilations
-    # Update: spectral amse seems to make the first compilation take quite a bit longer, so extend this timeout to 15 minutes
-    faulthandler.dump_traceback_later(900,exit=True)
+    # The first JAX compile can be much slower than steady-state execution.
+    faulthandler.dump_traceback_later(first_step_timeout,exit=True)
 
     # Use a with-block for Dask, the threaded gradient executor, and (optionally) CSV writing
     import concurrent.futures
@@ -904,13 +913,13 @@ if __name__ == '__main__':
             else:
                 # Feed the watchdog
                 if (processed == 0):
-                    # If we haven't completed any steps yet, set a long timeout because
-                    # we might still be compiling
-                    faulthandler.dump_traceback_later(600,exit=True)
+                    # If we haven't completed any steps yet, keep a long timeout because
+                    # we might still be compiling.
+                    faulthandler.dump_traceback_later(first_step_timeout,exit=True)
                 else:
                     # Otherwise, set a shorter timeout to catch GPU hangs with a minimum
                     # delay
-                    faulthandler.dump_traceback_later(180,exit=True)
+                    faulthandler.dump_traceback_later(watchdog_timeout,exit=True)
 
         # Loop finish, write out final checkpoints
         if (use_mpi):

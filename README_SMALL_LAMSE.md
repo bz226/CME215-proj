@@ -248,7 +248,7 @@ For the larger-lambda branch, run a short gate first:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
-LOSS_MODE=lamse LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 \
+LOSS_MODE=lamse LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 FIRST_STEP_TIMEOUT=3600 \
   sbatch scripts/sbatch_lamse_100_batches.sh
 ```
 
@@ -256,6 +256,11 @@ If stable, launch the 5000-batch run:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
-LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 \
+LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 FIRST_STEP_TIMEOUT=3600 \
   bash scripts/submit_final_lamse.sh
 ```
+
+The first LAMSE-0.3 compile can be slow on Sherlock. If the log ends with
+`Timeout (0:10:00)!` inside JAX/XLA compilation before any `Received ... err=`
+training lines, rerun with a larger `FIRST_STEP_TIMEOUT`; that is a watchdog
+timeout, not evidence that the loss became nonfinite.

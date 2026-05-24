@@ -34,6 +34,8 @@ CHECKPOINT_EVERY="${CHECKPOINT_EVERY:-100}"
 OPT_CHECKPOINT_EVERY="${OPT_CHECKPOINT_EVERY:-100}"
 CSV_PATH="${CSV_PATH:-runs/amse_full_${SLURM_JOB_ID:-manual}.csv}"
 SEED="${SEED:-0}"
+FIRST_STEP_TIMEOUT="${FIRST_STEP_TIMEOUT:-1800}"
+WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-180}"
 
 cd "${GRAPHCAST_DIR}"
 mkdir -p "${PARAMS_DIR}"
@@ -103,6 +105,8 @@ echo "FORECAST_LENGTH=${FORECAST_LENGTH}"
 echo "CHECKPOINT_EVERY=${CHECKPOINT_EVERY}"
 echo "OPT_CHECKPOINT_EVERY=${OPT_CHECKPOINT_EVERY}"
 echo "CSV_PATH=${CSV_PATH}"
+echo "FIRST_STEP_TIMEOUT=${FIRST_STEP_TIMEOUT}"
+echo "WATCHDOG_TIMEOUT=${WATCHDOG_TIMEOUT}"
 
 mkdir -p "$(dirname "${CSV_PATH}")"
 
@@ -122,6 +126,8 @@ train_args=(
   --learning-rate "${LEARNING_RATE}"
   --seed "${SEED}"
   --to-csv "${CSV_PATH}"
+  --first-step-timeout "${FIRST_STEP_TIMEOUT}"
+  --watchdog-timeout "${WATCHDOG_TIMEOUT}"
   --spectral-amse
 )
 
