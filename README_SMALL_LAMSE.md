@@ -33,7 +33,7 @@ Override with `PARAMS_DIR=/some/scratch/path` if needed. Local runs without `SCR
 Download the proposal checkpoint:
 
 ```bash
-export PARAMS_DIR=${PARAMS_DIR:-$SCRATCH/graphcast-small-lamse/params}
+export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
 python3 scripts/download_graphcast_small.py
 python3 scripts/prepare_graphcast_small_checkpoint.py
 python3 scripts/inspect_graphcast_checkpoint.py
@@ -207,3 +207,32 @@ ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
 LAMSE_LAMBDA=0.1 LAMSE_LMAX=32 START_BATCH=1000 \
   bash scripts/submit_final_lamse.sh
 ```
+
+## Four-Way Prediction Comparison
+
+After AMSE-5000 and LAMSE-5000 checkpoints exist, compare ground truth,
+pre-finetuned, AMSE, and LAMSE predictions for the same initialization:
+
+```bash
+source .venv-sherlock/activate_graphcast_small_lamse.sh
+python3 -m pip install matplotlib==3.8.3
+export JAX_PLATFORMS=cuda,cpu
+export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
+
+python3 compare_four_predictions.py \
+  --prefinetuned-checkpoint "$PARAMS_DIR/graphcast_small_lamse.000000.npz" \
+  --amse-checkpoint "$PARAMS_DIR/graphcast_small_amse.005000.npz" \
+  --lamse-checkpoint "$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
+  --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
+  --norm-factors stats \
+  --init-date "1 Jan 2022 00:00" \
+  --forecast-length 240 \
+  --lead-hours 6 120 240 \
+  --fields z500 t850 2t 10m_wind_speed msl \
+  --out-dir runs/prediction_compare/20220101 \
+  --overwrite
+```
+
+This writes four-panel value maps, model-minus-truth error maps, selected
+fields in Zarr, weighted scalar metrics, and AMSE-style spectral diagnostics
+when the GPU spherical harmonic path is available.
