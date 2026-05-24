@@ -145,7 +145,9 @@ def prepare_month_dataset(ds, metadata: dict, year: int, month: int):
     output = output.isel(latitude=slice(None, None, 4), longitude=slice(None, None, 4))
 
     if needs_precip_6hr:
-        precip = ds["total_precipitation"].sel(time=slice(date_start - 5 * one_hour, date_end))
+        output_start = output.time.data[0].astype("datetime64[h]").astype(dt.datetime)
+        output_end = output.time.data[-1].astype("datetime64[h]").astype(dt.datetime)
+        precip = ds["total_precipitation"].sel(time=slice(output_start - 5 * one_hour, output_end))
         if precip.latitude.data[1] - precip.latitude.data[0] < 0:
             precip = precip.isel(latitude=slice(None, None, -1))
         if precip.longitude.data[1] - precip.longitude.data[0] < 0:
