@@ -30,7 +30,8 @@ After each user prompt in this job, update this file with:
   - new utility to run one selected rollout, save prediction/target/error fields to Zarr, and write target/prediction/error PNG maps;
   - supports field aliases such as `z500`, `t850`, `2t`, `10m_wind_speed`, and `msl`;
   - supports selected leads such as `6`, `120`, and `240` hours;
-  - now emits a clear install hint if `matplotlib` is missing.
+  - now emits a clear install hint if `matplotlib` is missing;
+  - materializes saved fields as plain NumPy-backed xarray arrays before `to_zarr`, avoiding `JaxArrayWrapper` serialization errors.
 - `scripts/requirements_sherlock.txt`
   - added `matplotlib==3.8.3` for `plot_prediction_error.py` PNG output.
 - `scripts/download_weatherbench2_era5_1deg.py`
@@ -124,5 +125,6 @@ python3 build_scorecard.py \
 
 - `build_scorecard.py` writes summary metrics, not full forecast maps; use `plot_prediction_error.py` for selected full-field forecast/error maps.
 - If Sherlock reports `ModuleNotFoundError: No module named 'matplotlib'`, install it in the active venv with `python3 -m pip install matplotlib==3.8.3` or rebuild from the updated requirements file.
+- If an older `plot_prediction_error.py` run already wrote PNGs but failed at `prediction_error_fields.zarr` with `JaxArrayWrapper`, rerun after applying the materialization patch and pass `--overwrite`.
 - A real climatology zarr is still needed for ACC/activity metrics matching the paper exactly.
 - Full paper-style lagged-ensemble CRPS/eRMSE/SER still needs `build_crpscard.py` cleanup for this WeatherBench2 path.

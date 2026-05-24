@@ -108,6 +108,20 @@ def select_field(ds: xr.Dataset, var: str, level: int | None, lead_hours: int) -
     return da.reset_coords(drop=True)
 
 
+def materialize_dataarray(da: xr.DataArray) -> xr.DataArray:
+    """Rebuild a DataArray with plain NumPy data and coords for serialization."""
+
+    from graphcast import xarray_jax
+    import xarray as xr
+
+    data = np.asarray(xarray_jax.unwrap_data(da))
+    coords = {}
+    for name, coord in da.coords.items():
+        coord_data = np.asarray(xarray_jax.unwrap_data(coord))
+        coords[name] = (coord.dims, coord_data)
+    return xr.DataArray(data, dims=da.dims, coords=coords, attrs=da.attrs, name=da.name)
+
+
 def add_derived(ds: xr.Dataset) -> xr.Dataset:
     out = ds.copy()
     if {"10m_u_component_of_wind", "10m_v_component_of_wind"}.issubset(out.data_vars):
@@ -276,9 +290,9 @@ def main() -> None:
             print(f"Skipping {field_spec}: {var} not in targets")
             continue
         for lead in args.lead_hours:
-            prediction_field = select_field(predictions, var, level, lead)
-            target_field = select_field(targets, var, level, lead)
-            error_field = prediction_field - target_field
+            prediction_field = materialize_dataarray(select_field(predictions, var, level, lead))
+            target_field = materialize_dataarray(select_field(targets, var, level, lead))
+            error_field = materialize_dataarray(prediction_field - target_field)
             suffix = safe_name(f"{label}_{lead:03d}h")
             data_vars[f"prediction_{suffix}"] = prediction_field
             data_vars[f"target_{suffix}"] = target_field
