@@ -53,6 +53,8 @@ def new_inputs(targets_last,targets_now,forcings_last,forcings_now,static_vars):
 
 def load_climato(targets,climato_dbase,target_variables):
     global model_latitude, model_longitude
+    if climato_dbase is None:
+        return None
     target_datetime = targets.datetime[-1].data
     target_dayofyear = 1+(target_datetime - np.datetime64(target_datetime,'Y'))//np.timedelta64(1,'D')
     target_hour = (target_datetime - np.datetime64(target_datetime,'D'))//np.timedelta64(1,'h')
@@ -82,7 +84,8 @@ def advance_forecast(idate,device_queue,inputs_cpu,targets_cpu,tspec_cpu,forcing
     inputs_gpu = wrap_dataset(inputs_cpu,gpu_device)
     if targets_gpu is None: targets_gpu = wrap_dataset(targets_cpu,gpu_device)
     if forcings_gpu is None: forcings_gpu = wrap_dataset(forcings_cpu,gpu_device)
-    if climato_gpu is None: climato_gpu = wrap_dataset(climato_cpu,gpu_device)
+    if climato_gpu is None and climato_cpu is not None:
+        climato_gpu = wrap_dataset(climato_cpu,gpu_device)
     if tspec_gpu is None and tspec_cpu is not None: tspec_gpu = wrap_dataset(tspec_cpu,gpu_device)
 
     # Perform one-step prediction
@@ -96,7 +99,7 @@ def advance_forecast(idate,device_queue,inputs_cpu,targets_cpu,tspec_cpu,forcing
     from trainer.loss_utils import derived_variables
     prediction_gpu2 = derived_variables(prediction_gpu, compute_wind_speed = True )
     targets_gpu2    = derived_variables(targets_gpu,    compute_wind_speed = True )
-    climato_gpu2    = derived_variables(climato_gpu,    compute_wind_speed = True )
+    climato_gpu2    = derived_variables(climato_gpu,    compute_wind_speed = True ) if climato_gpu is not None else None
 
     # If provided target spectrum information, compute power spectral density and coherence of
     # prediction versus target
@@ -234,23 +237,24 @@ def scorecard(prediction,mask_hurr_reg, target,climato,climato_level_idx):
     # prediction - analysis standard deviation (central)
     pa_std = (((prediction - target - pa_bias)**2 * mask_weighted).sum(dim=('lat','lon')))**0.5
     
-    # Predictions vs climatology, see 
-    # https://confluence.ecmwf.int/display/FUG/Section+12.A+Statistical+Concepts+-+Deterministic+Data#Section12.AStatisticalConceptsDeterministicData-TheDecompositionofMSE
-    
-    # Activity of prediction and analysis
-    pc_act = ((prediction.isel(level=climato_level_idx) - climato)**2*mask_weighted).sum(dim=('lat','lon'))**0.5
-    ac_act = ((target.isel(level=climato_level_idx) - climato)**2*mask_weighted).sum(dim=('lat','lon'))**0.5
-    
-    # Anomaly correlation coefficient
-    acc = ((prediction.isel(level=climato_level_idx)-climato)*\
-           (target.isel(level=climato_level_idx)-climato)*\
-           mask_weighted).sum(dim=('lat','lon')) / (pc_act*ac_act)
+    scores = {'bias' : pa_bias, 'std' : pa_std}
 
-    return({'bias' : pa_bias,
-            'std' : pa_std,
-            'p_act' : pc_act,
-            'a_act' : ac_act,
-            'acc' : acc})
+    if climato is not None:
+        # Predictions vs climatology, see
+        # https://confluence.ecmwf.int/display/FUG/Section+12.A+Statistical+Concepts+-+Deterministic+Data#Section12.AStatisticalConceptsDeterministicData-TheDecompositionofMSE
+
+        # Activity of prediction and analysis
+        pc_act = ((prediction.isel(level=climato_level_idx) - climato)**2*mask_weighted).sum(dim=('lat','lon'))**0.5
+        ac_act = ((target.isel(level=climato_level_idx) - climato)**2*mask_weighted).sum(dim=('lat','lon'))**0.5
+
+        # Anomaly correlation coefficient
+        acc = ((prediction.isel(level=climato_level_idx)-climato)*\
+               (target.isel(level=climato_level_idx)-climato)*\
+               mask_weighted).sum(dim=('lat','lon')) / (pc_act*ac_act)
+
+        scores.update({'p_act' : pc_act, 'a_act' : ac_act, 'acc' : acc})
+
+    return scores
 
 short_names = {'10m_u_component_of_wind' : '10u',
                '10m_v_component_of_wind' : '10v',
@@ -382,7 +386,11 @@ if __name__ == '__main__':
 
     # Open databases
     dbase,_ = trainer.dataloader.open_databases(analysis_path,None) # Note no need for a separate verification dbase
-    climato_dbase = xr.open_zarr(climato_path)
+    if climato_path is None or climato_path.lower() in ("", "none", "null"):
+        print("No climatology path supplied; skipping p_act, a_act, and acc scorecard fields")
+        climato_dbase = None
+    else:
+        climato_dbase = xr.open_zarr(climato_path)
 
     # Load model
     (model_config, task_config, params) = forecast.generate_model.load_model(params_path)
@@ -424,7 +432,10 @@ if __name__ == '__main__':
 
     # Get the level indices of the output prediction that correspond to the levels available in the climatology
     # database, for scorecarding
-    climato_level_idx = np.searchsorted(levels,climato_dbase.level.data)
+    if climato_dbase is None:
+        climato_level_idx = np.array([], dtype=np.int64)
+    else:
+        climato_level_idx = np.searchsorted(levels,climato_dbase.level.data)
 
     norm_path = args.norm_path
 
@@ -444,9 +455,21 @@ if __name__ == '__main__':
                                                                diffs_stddev_by_level = diffs_stddev_by_level, 
                                                                mean_by_level = mean_by_level,
                                                                stddev_by_level = stddev_by_level)
-    # generate hurricane mask
-    from hurr_scorecard_mask.mask_hurr_generate import mask_hurr_gen
-    mask_hurr_reg = mask_hurr_gen()
+    # Generate hurricane-region masks if available. Otherwise use one global mask
+    # so scorecard/spectral evaluation can run without the optional mask package.
+    try:
+        from hurr_scorecard_mask.mask_hurr_generate import mask_hurr_gen
+        mask_hurr_reg = mask_hurr_gen()
+    except ImportError:
+        print("hurr_scorecard_mask not found; using a single global scorecard mask")
+        mask_hurr_reg = xr.DataArray(
+            np.ones((model_latitude.size, model_longitude.size), dtype=np.float32),
+            dims=("lat", "lon"),
+            coords={
+                "lat": model_latitude.rename(latitude="lat"),
+                "lon": model_longitude.rename(longitude="lon"),
+            },
+        )
 
     # JIT compile the scorecard calculator
     scorecard_jit = jax.jit(scorecard,static_argnums=(4,))   
@@ -534,9 +557,14 @@ if __name__ == '__main__':
         forcings_m6h = forcings_m6h.drop_vars('datetime')
 
         # Load/compute all data
-        (targets_m6h,targets_0h,targets_p6h,
-        forcings_m6h,forcings_0h,forcings_p6h,
-        climato_p6h, mask_hurr_reg) = Client.compute((targets_m6h,targets_0h,targets_p6h,forcings_m6h,forcings_0h,forcings_p6h,climato_p6h,mask_hurr_reg),sync=True)
+        if climato_p6h is None:
+            (targets_m6h,targets_0h,targets_p6h,
+            forcings_m6h,forcings_0h,forcings_p6h,
+            mask_hurr_reg) = Client.compute((targets_m6h,targets_0h,targets_p6h,forcings_m6h,forcings_0h,forcings_p6h,mask_hurr_reg),sync=True)
+        else:
+            (targets_m6h,targets_0h,targets_p6h,
+            forcings_m6h,forcings_0h,forcings_p6h,
+            climato_p6h, mask_hurr_reg) = Client.compute((targets_m6h,targets_0h,targets_p6h,forcings_m6h,forcings_0h,forcings_p6h,climato_p6h,mask_hurr_reg),sync=True)
         del ignore
 
         while (now_date < end_date):
@@ -564,7 +592,11 @@ if __name__ == '__main__':
                 forcings_next = forcings_next.drop_vars('datetime')
         
                 # Load the data in the background with dask, getting Futures
-                (targets_next_f,forcings_next_f,climato_next_f) = Client.compute((targets_next,forcings_next,climato_next),sync=False)
+                if climato_next is None:
+                    (targets_next_f,forcings_next_f) = Client.compute((targets_next,forcings_next),sync=False)
+                    climato_next_f = None
+                else:
+                    (targets_next_f,forcings_next_f,climato_next_f) = Client.compute((targets_next,forcings_next,climato_next),sync=False)
                 del climato_next, forcings_next, targets_next, ignore
 
             if (compute_spectrum):
@@ -629,7 +661,7 @@ if __name__ == '__main__':
                 # Overwrite _p6h variables with _next, waiting on the Futures
                 forcings_p6h = forcings_next_f.result()
                 targets_p6h = targets_next_f.result()
-                climato_p6h = climato_next_f.result()
+                climato_p6h = climato_next_f.result() if climato_next_f is not None else None
         
             # Clear GPU queue
             for idx in range(num_gpus):
