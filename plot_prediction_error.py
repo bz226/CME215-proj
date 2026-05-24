@@ -132,7 +132,13 @@ def plot_triplet(
     title: str,
     path: Path,
 ) -> None:
-    import matplotlib
+    try:
+        import matplotlib
+    except ImportError as exc:
+        raise ImportError(
+            "plot_prediction_error.py needs matplotlib for PNG output. "
+            "Install it in the active Sherlock venv with: python3 -m pip install matplotlib==3.8.3"
+        ) from exc
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
