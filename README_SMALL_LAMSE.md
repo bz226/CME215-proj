@@ -151,11 +151,11 @@ LOSS_MODE=lamse LAMSE_LAMBDA=0.0 \
 
 Use `LAMSE_LAMBDA=0.1` only after the pure-AMSE and lambda-zero gates are stable.
 
-For the first nonzero LAMSE gate, start with a reduced needlet bandlimit to keep host RAM bounded. The Sherlock wrappers default `LAMSE_LMAX` to `32` for `LOSS_MODE=lamse` when it is not set:
+For the first nonzero LAMSE gate, use the intended final lambda with a reduced needlet bandlimit to keep host RAM bounded. The Sherlock wrappers default `LAMSE_LMAX` to `32` for `LOSS_MODE=lamse` when it is not set:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
-LOSS_MODE=lamse LAMSE_LAMBDA=0.01 LAMSE_LMAX=32 \
+LOSS_MODE=lamse LAMSE_LAMBDA=0.1 LAMSE_LMAX=32 \
   sbatch scripts/sbatch_lamse_100_batches.sh
 ```
 
@@ -178,7 +178,21 @@ PYTHONPATH=. python train.py \
 Only after lambda-zero matches AMSE behavior, repeat with:
 
 ```bash
---lamse-lambda 0.01 --lamse-lmax 32
+--lamse-lambda 0.1 --lamse-lmax 32
 ```
 
-Do not run longer fine-tuning until the 100-batch lambda-zero and lambda-0.1 gates pass.
+Do not run longer fine-tuning until the 100-batch lambda-zero and lambda-0.1 gates pass. After those logs look stable, launch the 5000-batch LAMSE run:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+LAMSE_LAMBDA=0.1 LAMSE_LMAX=32 \
+  bash scripts/submit_final_lamse.sh
+```
+
+To continue from an existing 1000-batch LAMSE checkpoint:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+LAMSE_LAMBDA=0.1 LAMSE_LMAX=32 START_BATCH=1000 \
+  bash scripts/submit_final_lamse.sh
+```
