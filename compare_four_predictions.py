@@ -100,6 +100,9 @@ def label_for_model(model: str) -> str:
     match = re.fullmatch(r"lamse(\d+)p(\d+)", model)
     if match:
         return f"LAMSE-{match.group(1)}.{match.group(2)}"
+    match = re.fullmatch(r"amse(\d+)", model)
+    if match:
+        return f"AMSE-{int(match.group(1))}"
     return model.replace("_", " ")
 
 

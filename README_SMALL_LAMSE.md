@@ -225,6 +225,7 @@ python3 compare_four_predictions.py \
   --prefinetuned-checkpoint "$PARAMS_DIR/graphcast_small_lamse.000000.npz" \
   --amse-checkpoint "$PARAMS_DIR/graphcast_small_amse.005000.npz" \
   --lamse-checkpoint "$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
+  --extra-checkpoint "amse25000=$PARAMS_DIR/graphcast_small_amse.025000.npz" \
   --extra-checkpoint "lamse0p3=$PARAMS_DIR/graphcast_small_lamse_lam0p3_lmax32.005000.npz" \
   --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
   --norm-factors stats \
@@ -241,8 +242,8 @@ This writes multi-panel value maps, model-minus-truth error maps, selected
 fields in Zarr, weighted scalar metrics, direct pairwise delta/improvement
 metrics versus AMSE, and AMSE-style spectral diagnostics when the GPU
 spherical harmonic path is available. The direct `*_delta_vs_amse.png` plots
-are useful when AMSE and LAMSE error maps look visually identical. Omit the
-`--extra-checkpoint` line until the `LAMSE_LAMBDA=0.3` checkpoint exists.
+are useful when AMSE and LAMSE error maps look visually identical. Omit any
+`--extra-checkpoint` line until that checkpoint exists and has been verified.
 
 For the larger-lambda branch, run a short gate first:
 

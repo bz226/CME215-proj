@@ -16,6 +16,7 @@ After each user prompt in this job, update this file with:
 - AMSE baseline continuation `START_BATCH=1000 bash scripts/submit_final_amse.sh` completed cleanly to batch 5000 on Sherlock.
 - The AMSE training CSV covered 4000 rows, batch 1000 through 4999, with no nonfinite losses. Mean loss dropped modestly from about `0.719` in batches 1000-1499 to about `0.690` in batches 4500-4999.
 - Treat the AMSE batch-5000 checkpoint as the current AMSE baseline. The old path may be `params/graphcast_small_amse.005000.npz`; future scripts expect it under `${PARAMS_DIR:-$SCRATCH/graphcast-small-lamse/params}/graphcast_small_amse.005000.npz` unless `CHECKPOINT=...` is set explicitly.
+- The AMSE batch-25000 run is user-reported finished. Treat `$PARAMS_DIR/graphcast_small_amse.025000.npz` as a candidate long-AMSE checkpoint only after verifying the checkpoint, `.opt`, CSV tail, finite losses, and clean log exit.
 - The 2022 evaluation data staging needed two fixes:
   - use WeatherBench2 source `gs://weatherbench2/datasets/era5/1959-2023_01_10-full_37-1h-0p25deg-chunk-1.zarr`;
   - select precipitation by the actual output time range for the partial January 2023 buffer.
@@ -49,6 +50,7 @@ After each user prompt in this job, update this file with:
 - `compare_four_predictions.py`
   - new utility to compare ground truth, pre-finetuned GraphCast Small, AMSE-5000, LAMSE-0.1-5000, and optional extra checkpoints for the same init date, fields, and lead times;
   - accepts `--extra-checkpoint NAME=PATH`, so a larger-lambda checkpoint can be included in the same comparison run;
+  - labels extra AMSE checkpoints named like `amse25000` as `AMSE-25000` in plots and CSV outputs;
   - writes multi-panel value maps, model-minus-truth error maps, direct `model - reference` delta plots, reference-relative absolute-error improvement plots, a Zarr bundle of selected fields, and CSVs of weighted scalar and pairwise metrics;
   - defaults the pairwise reference to `--reference-model amse`, which is the useful view for distinguishing LAMSE variants from the AMSE baseline;
   - when GPU spherical harmonic diagnostics are available, also writes AMSE-style spectral amplitude ratio, coherence, amplitude-error, and decorrelation-error by total wavenumber, following the paper's amplitude/correlation decomposition.
@@ -84,7 +86,78 @@ After each user prompt in this job, update this file with:
 
 ## Immediate Next Steps
 
-1. Verify the finished LAMSE-5000 run artifacts:
+1. Verify the finished AMSE-25000 run artifacts:
+
+```bash
+export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
+
+ls -lh \
+  "$PARAMS_DIR/graphcast_small_amse.025000.npz" \
+  "$PARAMS_DIR/graphcast_small_amse.025000.npz.opt"
+
+tail -n 120 logs/gc-amse-final-*.log
+
+python3 - <<'PY'
+import glob
+import numpy as np
+import pandas as pd
+
+paths = sorted(glob.glob("runs/amse_final_*_to_025000.csv"))
+print(paths)
+for p in paths:
+    df = pd.read_csv(p)
+    numeric = df.select_dtypes("number")
+    print("\n==", p)
+    print("rows", len(df))
+    print(df.tail())
+    print("nonfinite rows", (~np.isfinite(numeric)).any(axis=1).sum())
+    for col in numeric.columns:
+        print(col, "first500", df[col].head(500).mean(), "last500", df[col].tail(500).mean())
+PY
+```
+
+2. Run a January 2022 AMSE-25000 scorecard/spectral smoke evaluation:
+
+```bash
+source .venv-sherlock/activate_graphcast_small_lamse.sh
+export JAX_PLATFORMS=cuda,cpu
+export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
+mkdir -p runs/eval
+
+python3 build_scorecard.py \
+  --model-checkpoint "$PARAMS_DIR/graphcast_small_amse.025000.npz" \
+  --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
+  --norm-factors stats \
+  --cpath none \
+  --start-date "1 Jan 2022 00:00" \
+  --end-date "31 Jan 2022 18:00" \
+  --forecast-length 240 \
+  --init-interval 24 \
+  --spectrum-leads 6 120 240 \
+  --to-path runs/eval/amse25000_score_jan2022.zarr \
+  --spectrum-output runs/eval/amse25000_spec_jan2022.zarr
+```
+
+3. Include AMSE-25000 in the combined visual comparison:
+
+```bash
+python3 compare_four_predictions.py \
+  --prefinetuned-checkpoint "$PARAMS_DIR/graphcast_small_lamse.000000.npz" \
+  --amse-checkpoint "$PARAMS_DIR/graphcast_small_amse.005000.npz" \
+  --lamse-checkpoint "$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
+  --extra-checkpoint "amse25000=$PARAMS_DIR/graphcast_small_amse.025000.npz" \
+  --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
+  --norm-factors stats \
+  --init-date "1 Jan 2022 00:00" \
+  --forecast-length 240 \
+  --lead-hours 6 120 240 \
+  --fields z500 t850 2t 10m_wind_speed msl \
+  --reference-model amse \
+  --out-dir runs/prediction_compare/20220101_amse25000 \
+  --overwrite
+```
+
+4. Verify the finished LAMSE-5000 run artifacts:
 
 ```bash
 export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
@@ -111,7 +184,7 @@ for p in paths:
 PY
 ```
 
-2. Run a short larger-lambda LAMSE gate:
+5. Run a short larger-lambda LAMSE gate:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
@@ -121,7 +194,7 @@ LOSS_MODE=lamse LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 FIRST_STEP_TIMEOUT=3600 \
 
 Check the resulting `logs/gc-lamse-100-*.log` and `runs/lamse_0.3_job_*.csv` for finite losses and clean `Exiting` lines.
 
-3. If the gate is stable, launch the 5000-batch larger-lambda LAMSE run:
+6. If the gate is stable, launch the 5000-batch larger-lambda LAMSE run:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
@@ -135,7 +208,7 @@ Expected final artifacts:
 - `$PARAMS_DIR/graphcast_small_lamse_lam0p3_lmax32.005000.npz.opt`
 - `runs/lamse_lam0p3_lmax32_final_000000_to_005000.csv`
 
-4. After LAMSE-0.3-5000 exists, run the combined January 2022 visual comparison:
+7. After LAMSE-0.3-5000 exists, run the combined January 2022 visual comparison:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -167,7 +240,7 @@ This writes:
 - `runs/prediction_compare/20220101_lam0p3/spectral_metrics.csv` if the AMSE-style spherical harmonic diagnostics succeed
 - `*_values.png`, `*_errors.png`, `*_delta_vs_amse.png`, and, when available, `*_spectra.png` for each selected field/lead.
 
-5. Run the January 2022 LAMSE-0.1-5000 scorecard/spectral smoke evaluation:
+8. Run the January 2022 LAMSE-0.1-5000 scorecard/spectral smoke evaluation:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -189,7 +262,7 @@ python3 build_scorecard.py \
   --spectrum-output runs/eval/lamse5000_spec_jan2022.zarr
 ```
 
-6. Save and plot example LAMSE-0.1-5000 prediction-error maps:
+9. Save and plot example LAMSE-0.1-5000 prediction-error maps:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -216,7 +289,7 @@ This writes:
 - `runs/prediction_error/lamse5000_20220101/prediction_error_fields.zarr`
 - one PNG per selected LAMSE field and lead.
 
-7. Inspect the AMSE-5000 and LAMSE-0.1-5000 January outputs side by side:
+10. Inspect the AMSE-5000 and LAMSE-0.1-5000 January outputs side by side:
 
 ```bash
 python3 - <<'PY'
@@ -234,7 +307,7 @@ for p in [
 PY
 ```
 
-8. Save and plot example AMSE-5000 prediction-error maps if not already done:
+11. Save and plot example AMSE-5000 prediction-error maps if not already done:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -259,7 +332,7 @@ This writes:
 - `runs/prediction_error/amse5000_20220101/prediction_error_fields.zarr`
 - one PNG per selected field and lead.
 
-9. Run the same January scorecard/spectral smoke test for the control checkpoint:
+12. Run the same January scorecard/spectral smoke test for the control checkpoint:
 
 ```bash
 export JAX_PLATFORMS=cuda,cpu
@@ -280,13 +353,13 @@ python3 build_scorecard.py \
   --spectrum-output runs/eval/control_spec_jan2022.zarr
 ```
 
-10. Compare AMSE-5000 vs LAMSE-0.1-5000 vs LAMSE-0.3-5000 vs control:
+13. Compare AMSE-5000 vs AMSE-25000 vs LAMSE-0.1-5000 vs LAMSE-0.3-5000 vs control:
 
 - direct scorecard `std` by lead time;
 - spectral amplitude ratio and coherence at `6h`, `120h`, and `240h`;
 - focus first on `z`, `t`, `2t`, `10u`, `10v`, and `msl`.
 
-11. If January comparison is sane, repeat for:
+14. If January comparison is sane, repeat for:
 
 - `$PARAMS_DIR/graphcast_small_amse.001000.npz` as a mid-training AMSE reference;
 - full-year 2022 with `--init-interval 12`;
