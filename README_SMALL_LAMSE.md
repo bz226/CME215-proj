@@ -208,10 +208,12 @@ LAMSE_LAMBDA=0.1 LAMSE_LMAX=32 START_BATCH=1000 \
   bash scripts/submit_final_lamse.sh
 ```
 
-## Four-Way Prediction Comparison
+## Multi-Model Prediction Comparison
 
 After AMSE-5000 and LAMSE-5000 checkpoints exist, compare ground truth,
-pre-finetuned, AMSE, and LAMSE predictions for the same initialization:
+pre-finetuned, AMSE, and one or more LAMSE predictions for the same
+initialization. Extra checkpoints can be included with
+`--extra-checkpoint NAME=PATH`.
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -223,16 +225,37 @@ python3 compare_four_predictions.py \
   --prefinetuned-checkpoint "$PARAMS_DIR/graphcast_small_lamse.000000.npz" \
   --amse-checkpoint "$PARAMS_DIR/graphcast_small_amse.005000.npz" \
   --lamse-checkpoint "$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
+  --extra-checkpoint "lamse0p3=$PARAMS_DIR/graphcast_small_lamse_lam0p3_lmax32.005000.npz" \
   --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
   --norm-factors stats \
   --init-date "1 Jan 2022 00:00" \
   --forecast-length 240 \
   --lead-hours 6 120 240 \
   --fields z500 t850 2t 10m_wind_speed msl \
-  --out-dir runs/prediction_compare/20220101 \
+  --reference-model amse \
+  --out-dir runs/prediction_compare/20220101_lam0p3 \
   --overwrite
 ```
 
-This writes four-panel value maps, model-minus-truth error maps, selected
-fields in Zarr, weighted scalar metrics, and AMSE-style spectral diagnostics
-when the GPU spherical harmonic path is available.
+This writes multi-panel value maps, model-minus-truth error maps, selected
+fields in Zarr, weighted scalar metrics, direct pairwise delta/improvement
+metrics versus AMSE, and AMSE-style spectral diagnostics when the GPU
+spherical harmonic path is available. The direct `*_delta_vs_amse.png` plots
+are useful when AMSE and LAMSE error maps look visually identical. Omit the
+`--extra-checkpoint` line until the `LAMSE_LAMBDA=0.3` checkpoint exists.
+
+For the larger-lambda branch, run a short gate first:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+LOSS_MODE=lamse LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 \
+  sbatch scripts/sbatch_lamse_100_batches.sh
+```
+
+If stable, launch the 5000-batch run:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 \
+  bash scripts/submit_final_lamse.sh
+```

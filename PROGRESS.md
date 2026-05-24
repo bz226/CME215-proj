@@ -31,7 +31,10 @@ After each user prompt in this job, update this file with:
 - Current evaluation data are held out in 2022. January 2022 has completed as the smoke evaluation; full-year 2022 remains the intended main evaluation.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.
 - LAMSE-5000 should use the same `plot_prediction_error.py` workflow as AMSE-5000, with checkpoint `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz` and output directory `runs/prediction_error/lamse5000_20220101`.
-- A four-way comparison script now exists for ground truth, pre-finetuned, AMSE-5000, and LAMSE-5000 predictions.
+- A multi-model comparison script now exists for ground truth, pre-finetuned, AMSE-5000, LAMSE-0.1-5000, and optional extra checkpoints such as LAMSE-0.3-5000.
+- Next larger-LAMSE run should use `LAMSE_LAMBDA=0.3`, `LAMSE_LMAX=32`; this is a meaningful increase from `0.1` while keeping the objective partly anchored to AMSE.
+- Current uploaded 10m wind speed comparison plots show no significant visible difference between AMSE-5000 and LAMSE-0.1-5000 at 6h, 120h, or 240h for the `2022-01-01 00:00` initialization. AMSE/LAMSE spectra nearly overlap; the clearer contrast is pre-finetuned under-amplification at higher wavenumbers. At 240h, AMSE and LAMSE both retain more high-wavenumber amplitude than pre-finetuned, but coherence is low/noisy and does not show a stable LAMSE advantage. Do not overclaim LAMSE-0.1 improvement from these plots alone.
+- Direct AMSE-vs-LAMSE delta views and pairwise improvement metrics are now needed for small effects; a larger-lambda LAMSE run remains the right next experiment.
 
 ## Local Code Patches Made
 
@@ -42,8 +45,10 @@ After each user prompt in this job, update this file with:
   - now emits a clear install hint if `matplotlib` is missing;
   - materializes saved fields as plain NumPy-backed xarray arrays before `to_zarr`, avoiding `JaxArrayWrapper` serialization errors.
 - `compare_four_predictions.py`
-  - new utility to compare ground truth, pre-finetuned GraphCast Small, AMSE-5000, and LAMSE-5000 for the same init date, fields, and lead times;
-  - writes four-panel value maps, three-panel model-minus-truth error maps, a Zarr bundle of selected fields, and a CSV of weighted bias/RMSE/MAE/error-std/correlation;
+  - new utility to compare ground truth, pre-finetuned GraphCast Small, AMSE-5000, LAMSE-0.1-5000, and optional extra checkpoints for the same init date, fields, and lead times;
+  - accepts `--extra-checkpoint NAME=PATH`, so a larger-lambda checkpoint can be included in the same comparison run;
+  - writes multi-panel value maps, model-minus-truth error maps, direct `model - reference` delta plots, reference-relative absolute-error improvement plots, a Zarr bundle of selected fields, and CSVs of weighted scalar and pairwise metrics;
+  - defaults the pairwise reference to `--reference-model amse`, which is the useful view for distinguishing LAMSE variants from the AMSE baseline;
   - when GPU spherical harmonic diagnostics are available, also writes AMSE-style spectral amplitude ratio, coherence, amplitude-error, and decorrelation-error by total wavenumber, following the paper's amplitude/correlation decomposition.
 - `scripts/requirements_sherlock.txt`
   - added `matplotlib==3.8.3` for `plot_prediction_error.py` PNG output.
@@ -101,7 +106,31 @@ for p in paths:
 PY
 ```
 
-2. Run the four-way January 2022 visual comparison:
+2. Run a short larger-lambda LAMSE gate:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+LOSS_MODE=lamse LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 \
+  sbatch scripts/sbatch_lamse_100_batches.sh
+```
+
+Check the resulting `logs/gc-lamse-100-*.log` and `runs/lamse_0.3_job_*.csv` for finite losses and clean `Exiting` lines.
+
+3. If the gate is stable, launch the 5000-batch larger-lambda LAMSE run:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 \
+  bash scripts/submit_final_lamse.sh
+```
+
+Expected final artifacts:
+
+- `$PARAMS_DIR/graphcast_small_lamse_lam0p3_lmax32.005000.npz`
+- `$PARAMS_DIR/graphcast_small_lamse_lam0p3_lmax32.005000.npz.opt`
+- `runs/lamse_lam0p3_lmax32_final_000000_to_005000.csv`
+
+4. After LAMSE-0.3-5000 exists, run the combined January 2022 visual comparison:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -113,24 +142,27 @@ python3 compare_four_predictions.py \
   --prefinetuned-checkpoint "$PARAMS_DIR/graphcast_small_lamse.000000.npz" \
   --amse-checkpoint "$PARAMS_DIR/graphcast_small_amse.005000.npz" \
   --lamse-checkpoint "$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
+  --extra-checkpoint "lamse0p3=$PARAMS_DIR/graphcast_small_lamse_lam0p3_lmax32.005000.npz" \
   --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
   --norm-factors stats \
   --init-date "1 Jan 2022 00:00" \
   --forecast-length 240 \
   --lead-hours 6 120 240 \
   --fields z500 t850 2t 10m_wind_speed msl \
-  --out-dir runs/prediction_compare/20220101 \
+  --reference-model amse \
+  --out-dir runs/prediction_compare/20220101_lam0p3 \
   --overwrite
 ```
 
 This writes:
 
-- `runs/prediction_compare/20220101/comparison_fields.zarr`
-- `runs/prediction_compare/20220101/comparison_metrics.csv`
-- `runs/prediction_compare/20220101/spectral_metrics.csv` if the AMSE-style spherical harmonic diagnostics succeed
-- `*_values.png`, `*_errors.png`, and, when available, `*_spectra.png` for each selected field/lead.
+- `runs/prediction_compare/20220101_lam0p3/comparison_fields.zarr`
+- `runs/prediction_compare/20220101_lam0p3/comparison_metrics.csv`
+- `runs/prediction_compare/20220101_lam0p3/pairwise_metrics.csv`
+- `runs/prediction_compare/20220101_lam0p3/spectral_metrics.csv` if the AMSE-style spherical harmonic diagnostics succeed
+- `*_values.png`, `*_errors.png`, `*_delta_vs_amse.png`, and, when available, `*_spectra.png` for each selected field/lead.
 
-3. Run the January 2022 LAMSE-5000 scorecard/spectral smoke evaluation:
+5. Run the January 2022 LAMSE-0.1-5000 scorecard/spectral smoke evaluation:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -152,7 +184,7 @@ python3 build_scorecard.py \
   --spectrum-output runs/eval/lamse5000_spec_jan2022.zarr
 ```
 
-4. Save and plot example LAMSE-5000 prediction-error maps:
+6. Save and plot example LAMSE-0.1-5000 prediction-error maps:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -179,7 +211,7 @@ This writes:
 - `runs/prediction_error/lamse5000_20220101/prediction_error_fields.zarr`
 - one PNG per selected LAMSE field and lead.
 
-5. Inspect the AMSE-5000 and LAMSE-5000 January outputs side by side:
+7. Inspect the AMSE-5000 and LAMSE-0.1-5000 January outputs side by side:
 
 ```bash
 python3 - <<'PY'
@@ -197,7 +229,7 @@ for p in [
 PY
 ```
 
-6. Save and plot example AMSE-5000 prediction-error maps if not already done:
+8. Save and plot example AMSE-5000 prediction-error maps if not already done:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -222,7 +254,7 @@ This writes:
 - `runs/prediction_error/amse5000_20220101/prediction_error_fields.zarr`
 - one PNG per selected field and lead.
 
-7. Run the same January scorecard/spectral smoke test for the control checkpoint:
+9. Run the same January scorecard/spectral smoke test for the control checkpoint:
 
 ```bash
 export JAX_PLATFORMS=cuda,cpu
@@ -243,17 +275,18 @@ python3 build_scorecard.py \
   --spectrum-output runs/eval/control_spec_jan2022.zarr
 ```
 
-8. Compare AMSE-5000 vs LAMSE-5000 vs control:
+10. Compare AMSE-5000 vs LAMSE-0.1-5000 vs LAMSE-0.3-5000 vs control:
 
 - direct scorecard `std` by lead time;
 - spectral amplitude ratio and coherence at `6h`, `120h`, and `240h`;
 - focus first on `z`, `t`, `2t`, `10u`, `10v`, and `msl`.
 
-9. If January comparison is sane, repeat for:
+11. If January comparison is sane, repeat for:
 
 - `$PARAMS_DIR/graphcast_small_amse.001000.npz` as a mid-training AMSE reference;
 - full-year 2022 with `--init-interval 12`;
 - full-year 2022 for LAMSE-5000 with `--init-interval 12`.
+- full-year 2022 for LAMSE-0.3-5000 with `--init-interval 12` if the January results justify it.
 
 ## Caveats
 
