@@ -261,7 +261,78 @@ LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 FIRST_STEP_TIMEOUT=3600 \
   bash scripts/submit_final_lamse.sh
 ```
 
+For the sharper high-L experiment, submit the fixed lambda-0.5, LMAX-96
+5000-batch wrapper:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+  bash scripts/submit_final_lamse_lam0p5_lmax96.sh
+```
+
+This wrapper defaults to `FIRST_STEP_TIMEOUT=7200`, `WATCHDOG_TIMEOUT=300`,
+and `TIME=36:00:00` because the first compile is expected to be heavier than
+the LMAX-32 runs. Resume with:
+
+```bash
+START_BATCH=1000 \
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+  bash scripts/submit_final_lamse_lam0p5_lmax96.sh
+```
+
 The first LAMSE-0.3 compile can be slow on Sherlock. If the log ends with
 `Timeout (0:10:00)!` inside JAX/XLA compilation before any `Received ... err=`
 training lines, rerun with a larger `FIRST_STEP_TIMEOUT`; that is a watchdog
 timeout, not evidence that the loss became nonfinite.
+
+## Hurricane Diagnostics
+
+The paper's hurricane check compares forecast maximum surface wind speed error,
+minimum central pressure error, and center-position error by lead time. This
+fork has a similar targeted diagnostic in `hurricane_performance_check.py`.
+It uses a supplied best-track file, finds each forecast storm center by minimum
+MSLP in a storm-centered search window, then scores max 10 m wind, min MSLP,
+and center distance.
+
+This is structurally similar to the paper but not identical: our current setup
+uses the 1-degree GraphCast Small model and ERA5/WeatherBench2 fields, while the
+paper's example used higher-resolution products. Best-track wind is also an
+observed intensity estimate, not a grid-scale 1-degree model wind, so expect a
+negative wind bias.
+
+Example Hurricane Ian 2022 smoke check:
+
+```bash
+source .venv-sherlock/activate_graphcast_small_lamse.sh
+python3 -m pip install matplotlib==3.8.3
+export JAX_PLATFORMS=cuda,cpu
+export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
+
+python3 hurricane_performance_check.py \
+  --track-file "$SCRATCH/graphcast-small-lamse/tracks/hurdat2_atlantic.txt" \
+  --storm-name IAN \
+  --storm-year 2022 \
+  --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
+  --norm-factors stats \
+  --checkpoint "prefinetuned=$PARAMS_DIR/graphcast_small_lamse.000000.npz" \
+  --checkpoint "amse5000=$PARAMS_DIR/graphcast_small_amse.005000.npz" \
+  --checkpoint "lamse0p1=$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
+  --init-start "19 Sep 2022 00:00" \
+  --init-end "27 Sep 2022 00:00" \
+  --init-interval-hours 24 \
+  --forecast-length 240 \
+  --lead-hours 6 12 18 24 36 48 72 96 120 144 168 192 216 240 \
+  --truth-source best_track \
+  --out-dir runs/hurricane_check/ian2022 \
+  --overwrite
+```
+
+Outputs:
+
+- `runs/hurricane_check/ian2022/hurricane_metrics.csv`
+- `runs/hurricane_check/ian2022/hurricane_mean_errors.csv`
+- `runs/hurricane_check/ian2022/hurricane_error_summary.png`
+
+For a model-grid-consistent sanity check, switch to `--truth-source analysis`;
+this still uses best-track position as the initial search guide, but compares
+wind and pressure against the staged analysis fields instead of best-track
+intensity.

@@ -1,6 +1,6 @@
 # GraphCast Small LAMSE Progress
 
-Updated: 2026-05-24
+Updated: 2026-05-27
 
 ## Working Rule
 
@@ -31,13 +31,20 @@ After each user prompt in this job, update this file with:
 - Fine-tuning defaults use initialization dates `1 Jan 2016 00:00` through `31 Dec 2017 18:00`; the staged data can include adjacent 2015-12-31 and 2018-01-01 buffer times needed for inputs/targets, but the effective training init years are 2016-2017.
 - Current AMSE/LAMSE fine-tuning is single-step training: `scripts/run_amse_training.sh` and `scripts/run_lamse_training.sh` default `FORECAST_LENGTH=1`, and `train.py --forecast-length` is measured in 6-hour model steps. Thus each training example backpropagates through a 6h forecast. The January 2022 evaluation/plotting is multi-step rollout: `--forecast-length 240` in the evaluation scripts means 240 forecast hours, or 40 autoregressive 6h steps.
 - Current evaluation data are held out in 2022. January 2022 has completed as the smoke evaluation; full-year 2022 remains the intended main evaluation.
+- Paper-aligned evaluation should prioritize aggregate verification over calendar year 2022. The paper uses single-event maps as illustrative case studies, but its main statistical and spectral conclusions are aggregated over 2022 forecast initializations. Treat the current `2022-01-01 00:00` plots as qualitative diagnostics only, not as evidence for final AMSE/LAMSE ranking.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.
 - LAMSE-5000 should use the same `plot_prediction_error.py` workflow as AMSE-5000, with checkpoint `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz` and output directory `runs/prediction_error/lamse5000_20220101`.
 - A multi-model comparison script now exists for ground truth, pre-finetuned, AMSE-5000, LAMSE-0.1-5000, and optional extra checkpoints such as LAMSE-0.3-5000.
-- Next larger-LAMSE run should use `LAMSE_LAMBDA=0.3`, `LAMSE_LMAX=32`; this is a meaningful increase from `0.1` while keeping the objective partly anchored to AMSE.
+- A LAMSE-0.3 comparison artifact exists in `/Users/bobby/Downloads/20220101_lam0p3.zip`. Its `pairwise_metrics.csv` compares pre-finetuned, LAMSE-0.1, and LAMSE-0.3 against AMSE-5000 for one January 2022 initialization.
 - The first observed `LAMSE_LAMBDA=0.3`, `LAMSE_LMAX=32` final job, `25960661`, did not train. Its log reached LAMSE geometry construction and started the first gradient compile, then `faulthandler` killed the process with `Timeout (0:10:00)!` inside JAX/XLA compilation before any `Received ... err=` lines, `Exiting` line, or final checkpoint. Treat this as a watchdog/compile-time failure, not a nonfinite-loss or model-quality result.
 - Current uploaded 10m wind speed comparison plots show no significant visible difference between AMSE-5000 and LAMSE-0.1-5000 at 6h, 120h, or 240h for the `2022-01-01 00:00` initialization. AMSE/LAMSE spectra nearly overlap; the clearer contrast is pre-finetuned under-amplification at higher wavenumbers. At 240h, AMSE and LAMSE both retain more high-wavenumber amplitude than pre-finetuned, but coherence is low/noisy and does not show a stable LAMSE advantage. Do not overclaim LAMSE-0.1 improvement from these plots alone.
-- Direct AMSE-vs-LAMSE delta views and pairwise improvement metrics are now needed for small effects; a larger-lambda LAMSE run remains the right next experiment.
+- Current uploaded AMSE-25000 comparison plots for 10m wind speed at 6h and 240h show AMSE-25000 is very close to AMSE-5000 and LAMSE-0.1-5000. At 6h, direct differences versus AMSE-5000 are tiny and mostly noisy. At 240h, AMSE-25000 differs spatially from AMSE-5000 but the absolute-error improvement map is mixed; the spectra show similar high-wavenumber amplitude retention to AMSE-5000/LAMSE-0.1, still clearly better than pre-finetuned. Do not claim AMSE-25000 is better without checking `pairwise_metrics.csv` and scorecard aggregates.
+- LAMSE-0.3 does not look better than AMSE-5000 in the provided January comparison. In `pairwise_metrics.csv`, LAMSE-0.3 wins only 3/15 RMSE cases and 5/15 MAE cases versus AMSE-5000; for 10m wind speed it is slightly worse than AMSE-5000 at 6h, 120h, and 240h. Spectrally, LAMSE-0.3 changes high-wavenumber amplitude but does not improve coherence. Do not prioritize more lambda-0.3 training before full-year aggregate evaluation or a revised loss/weighting choice.
+- Latest code-reading note: `needlet_construction.py` is the static setup layer for LAMSE needlets, including finite spectral filters, HEALPix center grids, coarse localization cells, and Gaussian local weights. `needlet_transform.py` is the runtime transform layer, interpolating lat-lon fields to HEALPix samples, computing `s2fft` spherical harmonic coefficients, applying each needlet filter, and returning per-scale HEALPix needlet coefficients.
+- Current hypothesis for AMSE/LAMSE indistinguishability: the active LAMSE setup may be too close to AMSE because `LAMSE_LMAX=32` only sees degrees up to 32, `lambda=0.1` leaves the hybrid loss 90% AMSE, and the default localization radius `locality_c * B^-j` is broad (`locality_c=3`, `B=2`; finest scale at `j=5` has sigma about 5.4 degrees and FWHM about 12.6 degrees). Before another long LAMSE run, prefer a short sweep over higher `L` and smaller `locality_c`, with diagnostics comparing `amse_total` and `lamse_total` scales.
+- AMSE and LAMSE are not using the same active spectral truncation in the current training wrappers. AMSE builds spectral coefficients from the full model latitude grid with `nspec = nlat - 1`, which is about degree 180 for the 1-degree GraphCast Small grid. LAMSE accepts `--lamse-lmax` as an inclusive maximum degree; `scripts/submit_final_lamse.sh` defaults this to `32`, so the current LAMSE loss is much more low-pass than AMSE. If `--lamse-lmax` is omitted entirely, LAMSE falls back to `len(latitudes) - 1`, matching AMSE's latitude-grid degree limit, but that is not what the current Sherlock LAMSE runs used.
+- A paper-style hurricane diagnostic script now exists: `hurricane_performance_check.py`. It reads HURDAT2 or CSV best-track data, runs one or more checkpoints, finds each predicted storm center by minimum MSLP in a best-track-centered search window, scores maximum 10 m wind error, minimum central pressure error, and center-position error by lead time, and writes `hurricane_metrics.csv`, `hurricane_mean_errors.csv`, and `hurricane_error_summary.png`. Treat this as structurally similar to the paper's hurricane check but not identical, because our setup uses 1-degree GraphCast Small/ERA5 and best-track wind is not a grid-scale 1-degree model wind.
+- A fixed high-L LAMSE submit wrapper now exists: `scripts/submit_final_lamse_lam0p5_lmax96.sh`. It delegates to `scripts/submit_final_lamse.sh` with `LAMSE_LAMBDA=0.5`, `LAMSE_LMAX=96`, `LAMSE_TAG=lam0p5_lmax96`, `FINAL_BATCH=5000`, `FIRST_STEP_TIMEOUT=7200`, `WATCHDOG_TIMEOUT=300`, and `TIME=36:00:00`.
 
 ## Local Code Patches Made
 
@@ -54,6 +61,10 @@ After each user prompt in this job, update this file with:
   - writes multi-panel value maps, model-minus-truth error maps, direct `model - reference` delta plots, reference-relative absolute-error improvement plots, a Zarr bundle of selected fields, and CSVs of weighted scalar and pairwise metrics;
   - defaults the pairwise reference to `--reference-model amse`, which is the useful view for distinguishing LAMSE variants from the AMSE baseline;
   - when GPU spherical harmonic diagnostics are available, also writes AMSE-style spectral amplitude ratio, coherence, amplitude-error, and decorrelation-error by total wavenumber, following the paper's amplitude/correlation decomposition.
+- `hurricane_performance_check.py`
+  - new paper-style tropical cyclone diagnostic using a supplied HURDAT2/CSV track file;
+  - supports multiple checkpoints through repeated `--checkpoint NAME=PATH`;
+  - writes per-case and lead-aggregated wind, pressure, and position-error metrics plus a three-panel lead-time summary plot.
 - `scripts/requirements_sherlock.txt`
   - added `matplotlib==3.8.3` for `plot_prediction_error.py` PNG output.
 - `scripts/run_lamse_training.sh`, `scripts/sbatch_lamse_training.sh`, `scripts/submit_final_lamse.sh`
@@ -61,6 +72,9 @@ After each user prompt in this job, update this file with:
   - checkpoint names include lambda and bandlimit, e.g. `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz`;
   - default `LAMSE_LAMBDA=0.1`, `LAMSE_LMAX=32`, `FINAL_BATCH=5000`, `CHECKPOINT_EVERY=500`.
   - verified executable and syntax-clean locally with `bash -n`.
+- `scripts/submit_final_lamse_lam0p5_lmax96.sh`
+  - fixed convenience wrapper for the 5000-batch `lambda=0.5`, `LMAX=96` LAMSE experiment;
+  - defaults to a longer first-compile timeout and 36-hour allocation because the high-L graph is expected to compile more slowly than LMAX-32.
 - `README_SMALL_LAMSE.md`
   - documented the post-gate 5000-batch LAMSE submission path and aligned the nonzero gate example with `LAMSE_LAMBDA=0.1`.
 - Checkpoint path handling
@@ -116,7 +130,7 @@ for p in paths:
 PY
 ```
 
-2. Run a January 2022 AMSE-25000 scorecard/spectral smoke evaluation:
+2. Run a January 2022 AMSE-25000 scorecard/spectral smoke evaluation, then promote the same scorecard path to all of 2022 before making final claims:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -138,9 +152,32 @@ python3 build_scorecard.py \
   --spectrum-output runs/eval/amse25000_spec_jan2022.zarr
 ```
 
+For the paper-aligned full-year aggregate, switch the end date and output names:
+
+```bash
+python3 build_scorecard.py \
+  --model-checkpoint "$PARAMS_DIR/graphcast_small_amse.025000.npz" \
+  --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
+  --norm-factors stats \
+  --cpath none \
+  --start-date "1 Jan 2022 00:00" \
+  --end-date "31 Dec 2022 18:00" \
+  --forecast-length 240 \
+  --init-interval 24 \
+  --spectrum-leads 6 120 240 \
+  --to-path runs/eval/amse25000_score_2022.zarr \
+  --spectrum-output runs/eval/amse25000_spec_2022.zarr
+```
+
 3. Include AMSE-25000 in the combined visual comparison:
 
 ```bash
+source .venv-sherlock/activate_graphcast_small_lamse.sh
+python3 -m pip install matplotlib==3.8.3
+export JAX_PLATFORMS=cuda,cpu
+export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
+mkdir -p runs/prediction_compare
+
 python3 compare_four_predictions.py \
   --prefinetuned-checkpoint "$PARAMS_DIR/graphcast_small_lamse.000000.npz" \
   --amse-checkpoint "$PARAMS_DIR/graphcast_small_amse.005000.npz" \
@@ -356,6 +393,7 @@ python3 build_scorecard.py \
 13. Compare AMSE-5000 vs AMSE-25000 vs LAMSE-0.1-5000 vs LAMSE-0.3-5000 vs control:
 
 - direct scorecard `std` by lead time;
+- `runs/prediction_compare/20220101_amse25000/pairwise_metrics.csv`, especially `rmse_improvement_vs_reference`, `mae_improvement_vs_reference`, and `mean_abs_error_improvement` for `model=amse25000`;
 - spectral amplitude ratio and coherence at `6h`, `120h`, and `240h`;
 - focus first on `z`, `t`, `2t`, `10u`, `10v`, and `msl`.
 
