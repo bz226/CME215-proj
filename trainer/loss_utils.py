@@ -20,6 +20,7 @@ Parameters = (
     LossParameter("--lamse", "lamse", bool, False, "Compute hybrid AMSE/LAMSE loss"),
     LossParameter("--lamse-lambda", "lamse_lambda", float, 0.1, "Hybrid LAMSE weight"),
     LossParameter("--lamse-lmax", "lamse_lmax", int, None, "Inclusive maximum degree for LAMSE"),
+    LossParameter("--lamse-input-nside", "lamse_input_nside", int, None, "LAMSE HEALPix input nside override"),
     LossParameter("--mae", "mae", bool, False, "Compute loss with mean absolute error rather than MSE"),
 )
 
@@ -249,6 +250,7 @@ def make_loss_new(
             lamse_config = LAMSEConfig(
                 lambda_lamse=config_dict["lamse_lambda"],
                 L=config_dict["lamse_lmax"],
+                input_nside=config_dict["lamse_input_nside"],
             )
             if not silent:
                 print("Building LAMSE HEALPix/needlet geometry")
@@ -263,6 +265,7 @@ def make_loss_new(
             lamse_config = LAMSEConfig(
                 lambda_lamse=config_dict["lamse_lambda"],
                 L=config_dict["lamse_lmax"],
+                input_nside=config_dict["lamse_input_nside"],
             )
             if not silent:
                 print("Skipping LAMSE HEALPix/needlet geometry because lamse_lambda=0.0")

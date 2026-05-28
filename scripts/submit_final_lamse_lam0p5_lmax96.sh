@@ -18,11 +18,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export LAMSE_LAMBDA="0.5"
 export LAMSE_LMAX="96"
+export LAMSE_INPUT_NSIDE="${LAMSE_INPUT_NSIDE:-32}"
 export LAMSE_TAG="lam0p5_lmax96"
 export FINAL_BATCH="${FINAL_BATCH:-5000}"
 
-# LMAX=96 builds a larger s2fft/HEALPix graph than the LMAX=32 runs, so give
-# the first JAX compile substantially more room by default.
+# LMAX=96 needs input_nside=32 under the current s2fft HEALPix constraint
+# L >= 2*nside. It also builds a larger graph than LMAX=32, so give the first
+# JAX compile substantially more room by default.
 export FIRST_STEP_TIMEOUT="${FIRST_STEP_TIMEOUT:-7200}"
 export WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-300}"
 export TIME="${TIME:-36:00:00}"

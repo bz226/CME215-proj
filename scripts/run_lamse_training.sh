@@ -13,6 +13,7 @@ GRAPHCAST_DIR="${GRAPHCAST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.1}"
 LAMSE_LMAX="${LAMSE_LMAX:-32}"
+LAMSE_INPUT_NSIDE="${LAMSE_INPUT_NSIDE:-}"
 LAMSE_TAG="${LAMSE_TAG:-lam${LAMSE_LAMBDA//./p}_lmax${LAMSE_LMAX}}"
 if [[ -n "${SCRATCH:-}" ]]; then
   DEFAULT_PARAMS_DIR="${SCRATCH}/graphcast-small-lamse/params"
@@ -107,6 +108,7 @@ echo "BATCH_NUMBER=${BATCH_NUMBER}"
 echo "FORECAST_LENGTH=${FORECAST_LENGTH}"
 echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
 echo "LAMSE_LMAX=${LAMSE_LMAX}"
+echo "LAMSE_INPUT_NSIDE=${LAMSE_INPUT_NSIDE:-auto}"
 echo "CHECKPOINT_EVERY=${CHECKPOINT_EVERY}"
 echo "OPT_CHECKPOINT_EVERY=${OPT_CHECKPOINT_EVERY}"
 echo "CSV_PATH=${CSV_PATH}"
@@ -137,6 +139,10 @@ train_args=(
   --lamse-lambda "${LAMSE_LAMBDA}"
   --lamse-lmax "${LAMSE_LMAX}"
 )
+
+if [[ -n "${LAMSE_INPUT_NSIDE}" ]]; then
+  train_args+=(--lamse-input-nside "${LAMSE_INPUT_NSIDE}")
+fi
 
 if [[ -n "${COSINE_WARMUP:-}" || -n "${COSINE_TOTAL:-}" ]]; then
   if [[ -z "${COSINE_WARMUP:-}" || -z "${COSINE_TOTAL:-}" ]]; then

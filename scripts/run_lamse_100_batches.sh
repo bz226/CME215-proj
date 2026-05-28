@@ -15,6 +15,7 @@ ANALYSIS_PATH="${ANALYSIS_PATH:-/path/to/era5_or_weatherbench_1deg}"
 NORM_FACTORS="${NORM_FACTORS:-stats}"
 LOSS_MODE="${LOSS_MODE:-amse}"
 LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.0}"
+LAMSE_INPUT_NSIDE="${LAMSE_INPUT_NSIDE:-}"
 BATCH_SIZE="${BATCH_SIZE:-1}"
 BATCH_NUMBER="${BATCH_NUMBER:-100}"
 FORECAST_LENGTH="${FORECAST_LENGTH:-1}"
@@ -60,6 +61,7 @@ echo "CHECKPOINT=${CHECKPOINT}"
 if [[ "${LOSS_MODE}" == "lamse" ]]; then
   echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
   echo "LAMSE_LMAX=${LAMSE_LMAX}"
+  echo "LAMSE_INPUT_NSIDE=${LAMSE_INPUT_NSIDE:-auto}"
 fi
 echo "FIRST_STEP_TIMEOUT=${FIRST_STEP_TIMEOUT}"
 echo "WATCHDOG_TIMEOUT=${WATCHDOG_TIMEOUT}"
@@ -89,6 +91,9 @@ case "${LOSS_MODE}" in
     train_args+=(--lamse --lamse-lambda "${LAMSE_LAMBDA}")
     if [[ -n "${LAMSE_LMAX}" ]]; then
       train_args+=(--lamse-lmax "${LAMSE_LMAX}")
+    fi
+    if [[ -n "${LAMSE_INPUT_NSIDE}" ]]; then
+      train_args+=(--lamse-input-nside "${LAMSE_INPUT_NSIDE}")
     fi
     ;;
   mse)

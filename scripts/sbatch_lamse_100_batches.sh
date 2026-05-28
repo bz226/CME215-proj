@@ -58,6 +58,7 @@ DEFAULT_DATA_DIR="${SCRATCH:-${PROJECT_DIR}/data}/graphcast-small-lamse/era5_1de
 ANALYSIS_PATH="${ANALYSIS_PATH:-${DATA_DIR:-${DEFAULT_DATA_DIR}}}"
 LOSS_MODE="${LOSS_MODE:-amse}"
 LAMSE_LAMBDA="${LAMSE_LAMBDA:-0.0}"
+LAMSE_INPUT_NSIDE="${LAMSE_INPUT_NSIDE:-}"
 LAMSE_LMAX="${LAMSE_LMAX:-}"
 if [[ "${LOSS_MODE}" == "lamse" && -z "${LAMSE_LMAX}" ]]; then
   LAMSE_LMAX="${LAMSE_DEFAULT_LMAX:-32}"
@@ -126,6 +127,7 @@ echo "CHECKPOINT=${CHECKPOINT}"
 echo "LAMSE_LAMBDA=${LAMSE_LAMBDA}"
 if [[ "${LOSS_MODE}" == "lamse" ]]; then
   echo "LAMSE_LMAX=${LAMSE_LMAX}"
+  echo "LAMSE_INPUT_NSIDE=${LAMSE_INPUT_NSIDE:-auto}"
 fi
 echo "FIRST_STEP_TIMEOUT=${FIRST_STEP_TIMEOUT}"
 echo "WATCHDOG_TIMEOUT=${WATCHDOG_TIMEOUT}"
@@ -186,6 +188,7 @@ python3 scripts/prepare_graphcast_small_checkpoint.py
 python3 scripts/inspect_graphcast_checkpoint.py
 
 LAMSE_LAMBDA="${LAMSE_LAMBDA}" \
+LAMSE_INPUT_NSIDE="${LAMSE_INPUT_NSIDE}" \
 LOSS_MODE="${LOSS_MODE}" \
 PARAMS_DIR="${PARAMS_DIR}" \
 CHECKPOINT="${CHECKPOINT}" \

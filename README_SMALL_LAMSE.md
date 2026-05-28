@@ -261,22 +261,24 @@ LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 FIRST_STEP_TIMEOUT=3600 \
   bash scripts/submit_final_lamse.sh
 ```
 
-For the sharper high-L experiment, submit the fixed lambda-0.5, LMAX-96
+For the sharper high-L experiment, submit the fixed lambda-0.5, LMAX-127
 5000-batch wrapper:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
-  bash scripts/submit_final_lamse_lam0p5_lmax96.sh
+  bash scripts/submit_final_lamse_lam0p5_lmax127.sh
 ```
 
-This wrapper defaults to `FIRST_STEP_TIMEOUT=7200`, `WATCHDOG_TIMEOUT=300`,
-and `TIME=36:00:00` because the first compile is expected to be heavier than
-the LMAX-32 runs. Resume with:
+This wrapper uses the automatic `input_nside=64`: `LMAX=127` gives s2fft
+bandlimit `128`, which satisfies the HEALPix `L >= 2*nside` constraint. It
+defaults to `FIRST_STEP_TIMEOUT=10800`, `WATCHDOG_TIMEOUT=600`, and
+`TIME=48:00:00` because the graph is expected to be heavier than the LMAX-32
+and LMAX-96 runs. Resume with:
 
 ```bash
 START_BATCH=1000 \
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
-  bash scripts/submit_final_lamse_lam0p5_lmax96.sh
+  bash scripts/submit_final_lamse_lam0p5_lmax127.sh
 ```
 
 The first LAMSE-0.3 compile can be slow on Sherlock. If the log ends with

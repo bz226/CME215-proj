@@ -1,6 +1,6 @@
 # GraphCast Small LAMSE Progress
 
-Updated: 2026-05-27
+Updated: 2026-05-28
 
 ## Working Rule
 
@@ -45,6 +45,9 @@ After each user prompt in this job, update this file with:
 - AMSE and LAMSE are not using the same active spectral truncation in the current training wrappers. AMSE builds spectral coefficients from the full model latitude grid with `nspec = nlat - 1`, which is about degree 180 for the 1-degree GraphCast Small grid. LAMSE accepts `--lamse-lmax` as an inclusive maximum degree; `scripts/submit_final_lamse.sh` defaults this to `32`, so the current LAMSE loss is much more low-pass than AMSE. If `--lamse-lmax` is omitted entirely, LAMSE falls back to `len(latitudes) - 1`, matching AMSE's latitude-grid degree limit, but that is not what the current Sherlock LAMSE runs used.
 - A paper-style hurricane diagnostic script now exists: `hurricane_performance_check.py`. It reads HURDAT2 or CSV best-track data, runs one or more checkpoints, finds each predicted storm center by minimum MSLP in a best-track-centered search window, scores maximum 10 m wind error, minimum central pressure error, and center-position error by lead time, and writes `hurricane_metrics.csv`, `hurricane_mean_errors.csv`, and `hurricane_error_summary.png`. Treat this as structurally similar to the paper's hurricane check but not identical, because our setup uses 1-degree GraphCast Small/ERA5 and best-track wind is not a grid-scale 1-degree model wind.
 - A fixed high-L LAMSE submit wrapper now exists: `scripts/submit_final_lamse_lam0p5_lmax96.sh`. It delegates to `scripts/submit_final_lamse.sh` with `LAMSE_LAMBDA=0.5`, `LAMSE_LMAX=96`, `LAMSE_TAG=lam0p5_lmax96`, `FINAL_BATCH=5000`, `FIRST_STEP_TIMEOUT=7200`, `WATCHDOG_TIMEOUT=300`, and `TIME=36:00:00`.
+- The earlier high-L LAMSE command used `ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 bash scripts/submit_final_lamse_lam0p5_lmax96.sh`. Run high-L training from the Sherlock project root after activating the project environment, and use the 2016-2017 training data path, not the held-out `_2022` evaluation path.
+- Job `26501802` for `LAMSE_LAMBDA=0.5`, `LAMSE_LMAX=96` failed before training. It reached `Building LAMSE HEALPix/needlet geometry` and raised `ValueError: LAMSE input_nside=64 is too high for s2fft bandlimit L=97; HEALPix requires L >= 2*nside`. There were no `Received ... err=` lines, no optimizer updates, and no final checkpoint, so this is a geometry configuration failure, not a numerical training result. The fix is to rerun the same wrapper after the `LAMSE_INPUT_NSIDE=32` patch.
+- Since a higher maximum degree is acceptable, prefer the new `scripts/submit_final_lamse_lam0p5_lmax127.sh` wrapper over the LMAX-96 retry. `LMAX=127` gives bandlimit 128, so automatic `input_nside=64` satisfies the s2fft HEALPix constraint without lowering input nside. This run is heavier and defaults to `FIRST_STEP_TIMEOUT=10800`, `WATCHDOG_TIMEOUT=600`, and `TIME=48:00:00`.
 
 ## Local Code Patches Made
 
@@ -74,7 +77,12 @@ After each user prompt in this job, update this file with:
   - verified executable and syntax-clean locally with `bash -n`.
 - `scripts/submit_final_lamse_lam0p5_lmax96.sh`
   - fixed convenience wrapper for the 5000-batch `lambda=0.5`, `LMAX=96` LAMSE experiment;
-  - defaults to a longer first-compile timeout and 36-hour allocation because the high-L graph is expected to compile more slowly than LMAX-32.
+  - defaults to `LAMSE_INPUT_NSIDE=32`, a longer first-compile timeout, and a 36-hour allocation because the high-L graph is expected to compile more slowly than LMAX-32.
+- `scripts/submit_final_lamse_lam0p5_lmax127.sh`
+  - fixed convenience wrapper for the preferred 5000-batch `lambda=0.5`, `LMAX=127` LAMSE experiment;
+  - leaves `LAMSE_INPUT_NSIDE` unset so the automatic `input_nside=64` path is used, and defaults to a three-hour first-step timeout plus a 48-hour allocation.
+- LAMSE training CLI/scripts
+  - added `--lamse-input-nside` and `LAMSE_INPUT_NSIDE` plumbing so high-L experiments can lower the HEALPix input nside without changing the requested spectral max degree.
 - `README_SMALL_LAMSE.md`
   - documented the post-gate 5000-batch LAMSE submission path and aligned the nonzero gate example with `LAMSE_LAMBDA=0.1`.
 - Checkpoint path handling
@@ -221,7 +229,29 @@ for p in paths:
 PY
 ```
 
-5. Run a short larger-lambda LAMSE gate:
+5. Submit the preferred high-L `lambda=0.5`, `LMAX=127` 5000-batch LAMSE run:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+  bash scripts/submit_final_lamse_lam0p5_lmax127.sh
+```
+
+Expected final artifacts:
+
+- `$PARAMS_DIR/graphcast_small_lamse_lam0p5_lmax127.005000.npz`
+- `$PARAMS_DIR/graphcast_small_lamse_lam0p5_lmax127.005000.npz.opt`
+- `runs/lamse_lam0p5_lmax127_final_000000_to_005000.csv`
+
+Initial health checks after submission:
+
+```bash
+squeue -u "$USER" -n gc-lamse-final
+tail -n 120 logs/gc-lamse-final-*.log
+```
+
+The first compile can be long for `LMAX=127`; the wrapper gives it a three-hour first-step timeout and keeps the automatic `input_nside=64` because bandlimit 128 satisfies the HEALPix constraint. Treat a timeout before any `Received ... err=` lines as compile/watchdog failure, not a numerical loss result.
+
+6. Run a short larger-lambda LAMSE gate:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
@@ -231,7 +261,7 @@ LOSS_MODE=lamse LAMSE_LAMBDA=0.3 LAMSE_LMAX=32 FIRST_STEP_TIMEOUT=3600 \
 
 Check the resulting `logs/gc-lamse-100-*.log` and `runs/lamse_0.3_job_*.csv` for finite losses and clean `Exiting` lines.
 
-6. If the gate is stable, launch the 5000-batch larger-lambda LAMSE run:
+7. If the gate is stable, launch the 5000-batch larger-lambda LAMSE run:
 
 ```bash
 ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
@@ -245,7 +275,7 @@ Expected final artifacts:
 - `$PARAMS_DIR/graphcast_small_lamse_lam0p3_lmax32.005000.npz.opt`
 - `runs/lamse_lam0p3_lmax32_final_000000_to_005000.csv`
 
-7. After LAMSE-0.3-5000 exists, run the combined January 2022 visual comparison:
+8. After LAMSE-0.3-5000 exists, run the combined January 2022 visual comparison:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -277,7 +307,7 @@ This writes:
 - `runs/prediction_compare/20220101_lam0p3/spectral_metrics.csv` if the AMSE-style spherical harmonic diagnostics succeed
 - `*_values.png`, `*_errors.png`, `*_delta_vs_amse.png`, and, when available, `*_spectra.png` for each selected field/lead.
 
-8. Run the January 2022 LAMSE-0.1-5000 scorecard/spectral smoke evaluation:
+9. Run the January 2022 LAMSE-0.1-5000 scorecard/spectral smoke evaluation:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -299,7 +329,7 @@ python3 build_scorecard.py \
   --spectrum-output runs/eval/lamse5000_spec_jan2022.zarr
 ```
 
-9. Save and plot example LAMSE-0.1-5000 prediction-error maps:
+10. Save and plot example LAMSE-0.1-5000 prediction-error maps:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -326,7 +356,7 @@ This writes:
 - `runs/prediction_error/lamse5000_20220101/prediction_error_fields.zarr`
 - one PNG per selected LAMSE field and lead.
 
-10. Inspect the AMSE-5000 and LAMSE-0.1-5000 January outputs side by side:
+11. Inspect the AMSE-5000 and LAMSE-0.1-5000 January outputs side by side:
 
 ```bash
 python3 - <<'PY'
@@ -344,7 +374,7 @@ for p in [
 PY
 ```
 
-11. Save and plot example AMSE-5000 prediction-error maps if not already done:
+12. Save and plot example AMSE-5000 prediction-error maps if not already done:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
@@ -369,7 +399,7 @@ This writes:
 - `runs/prediction_error/amse5000_20220101/prediction_error_fields.zarr`
 - one PNG per selected field and lead.
 
-12. Run the same January scorecard/spectral smoke test for the control checkpoint:
+13. Run the same January scorecard/spectral smoke test for the control checkpoint:
 
 ```bash
 export JAX_PLATFORMS=cuda,cpu
@@ -390,14 +420,14 @@ python3 build_scorecard.py \
   --spectrum-output runs/eval/control_spec_jan2022.zarr
 ```
 
-13. Compare AMSE-5000 vs AMSE-25000 vs LAMSE-0.1-5000 vs LAMSE-0.3-5000 vs control:
+14. Compare AMSE-5000 vs AMSE-25000 vs LAMSE-0.1-5000 vs LAMSE-0.3-5000 vs control:
 
 - direct scorecard `std` by lead time;
 - `runs/prediction_compare/20220101_amse25000/pairwise_metrics.csv`, especially `rmse_improvement_vs_reference`, `mae_improvement_vs_reference`, and `mean_abs_error_improvement` for `model=amse25000`;
 - spectral amplitude ratio and coherence at `6h`, `120h`, and `240h`;
 - focus first on `z`, `t`, `2t`, `10u`, `10v`, and `msl`.
 
-14. If January comparison is sane, repeat for:
+15. If January comparison is sane, repeat for:
 
 - `$PARAMS_DIR/graphcast_small_amse.001000.npz` as a mid-training AMSE reference;
 - full-year 2022 with `--init-interval 12`;
