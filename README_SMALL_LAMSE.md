@@ -271,9 +271,9 @@ ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
 
 This wrapper uses the automatic `input_nside=64`: `LMAX=127` gives s2fft
 bandlimit `128`, which satisfies the HEALPix `L >= 2*nside` constraint. It
-defaults to `FIRST_STEP_TIMEOUT=10800`, `WATCHDOG_TIMEOUT=600`, and
-`TIME=48:00:00` because the graph is expected to be heavier than the LMAX-32
-and LMAX-96 runs. Resume with:
+defaults to `FIRST_STEP_TIMEOUT=21600`, `WATCHDOG_TIMEOUT=1200`, and
+`TIME=48:00:00` because job `26581985` hit the previous three-hour first-step
+watchdog while JAX was still compiling. Resume with:
 
 ```bash
 START_BATCH=1000 \
@@ -285,6 +285,50 @@ The first LAMSE-0.3 compile can be slow on Sherlock. If the log ends with
 `Timeout (0:10:00)!` inside JAX/XLA compilation before any `Received ... err=`
 training lines, rerun with a larger `FIRST_STEP_TIMEOUT`; that is a watchdog
 timeout, not evidence that the loss became nonfinite.
+
+## Full-Year 2022 Aggregate Evaluation
+
+Run the paper-style aggregate scorecard over all 2022 initializations after the
+checkpoints have been verified. The default wrapper uses 12-hourly
+initializations, 10-day rollouts, and spectrum leads at 6h, 120h, and 240h:
+
+```bash
+source .venv-sherlock/activate_graphcast_small_lamse.sh
+export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
+
+bash scripts/submit_scorecard_2022_all.sh
+```
+
+This submits separate Slurm jobs for:
+
+- `control`: `$PARAMS_DIR/graphcast_small_lamse.000000.npz`
+- `amse5000`: `$PARAMS_DIR/graphcast_small_amse.005000.npz`
+- `amse25000`: `$PARAMS_DIR/graphcast_small_amse.025000.npz`
+- `lamse0p1_lmax32_5000`: `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz`
+- `lamse0p5_lmax127_5000`: `$PARAMS_DIR/graphcast_small_lamse_lam0p5_lmax127.005000.npz`
+
+Outputs are written under `runs/eval/2022_full_i12/` by default:
+
+- `<model>_score_2022.zarr`
+- `<model>_spec_2022.zarr`
+- `scorecard_manifest.tsv`
+
+If the 12-hourly run is too expensive, start with daily initializations:
+
+```bash
+INIT_INTERVAL=24 bash scripts/submit_scorecard_2022_all.sh
+```
+
+After all jobs finish, summarize the deterministic scorecards into one CSV:
+
+```bash
+python3 scripts/summarize_scorecards.py \
+  --manifest runs/eval/2022_full_i12/scorecard_manifest.tsv \
+  --out-csv runs/eval/2022_full_i12/scorecard_summary.csv
+```
+
+Use `stat=std` rows as the deterministic error summary; lower values are
+better. The spectral Zarrs remain the source for amplitude/coherence analysis.
 
 ## Hurricane Diagnostics
 

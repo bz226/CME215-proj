@@ -22,10 +22,11 @@ export LAMSE_TAG="lam0p5_lmax127"
 export FINAL_BATCH="${FINAL_BATCH:-5000}"
 
 # LMAX=127 gives s2fft bandlimit 128, so the automatic input_nside=64 is
-# valid under the HEALPix L >= 2*nside constraint. The graph is heavier than
-# LMAX=32/96, so default to a longer compile watchdog and allocation.
-export FIRST_STEP_TIMEOUT="${FIRST_STEP_TIMEOUT:-10800}"
-export WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-600}"
+# valid under the HEALPix L >= 2*nside constraint. The graph is much heavier
+# than LMAX=32/96; job 26581985 hit a three-hour first-compile watchdog before
+# the first loss value, so default to a six-hour first-step timeout.
+export FIRST_STEP_TIMEOUT="${FIRST_STEP_TIMEOUT:-21600}"
+export WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-1200}"
 export TIME="${TIME:-48:00:00}"
 
 exec bash "${SCRIPT_DIR}/submit_final_lamse.sh"

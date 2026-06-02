@@ -359,7 +359,7 @@ if __name__ == '__main__':
     params_path = args.model_checkpoint # 'params/GraphCast - ERA5 1979-2017 - resolution 0.25 - pressure levels 37 - mesh 2to6 - precipitation input and output.npz'
     outpath = args.outpath
     specpath = args.specpath
-    spectrum_leads = [float(f) for f in args.spectrum_leads]
+    spectrum_leads = [float(f) for f in (args.spectrum_leads or [])]
     if len(spectrum_leads) > 0:
         compute_spectrum=True
         assert(specpath is not None)
