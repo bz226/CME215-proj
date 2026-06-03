@@ -13,6 +13,7 @@ set -euo pipefail
 # Common overrides:
 #   INIT_INTERVAL=24 bash scripts/submit_scorecard_2022_all.sh
 #   MODELS_TO_RUN="amse5000 lamse0p5_lmax127_5000" bash scripts/submit_scorecard_2022_all.sh
+#   CLIMATO_PATH=/path/to/era5_1deg_climatology.zarr bash scripts/submit_scorecard_2022_all.sh
 #   SKIP_MISSING=1 bash scripts/submit_scorecard_2022_all.sh
 
 PROJECT_DIR="${PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -36,7 +37,9 @@ END_DATE="${END_DATE:-31 Dec 2022 18:00}"
 FORECAST_LENGTH="${FORECAST_LENGTH:-240}"
 INIT_INTERVAL="${INIT_INTERVAL:-12}"
 SPECTRUM_LEADS="${SPECTRUM_LEADS:-6 120 240}"
-CPATH="${CPATH:-none}"
+# Do not use CPATH for climatology here: Sherlock modules set CPATH to compiler
+# include paths, which would be misread by build_scorecard.py as a zarr store.
+CLIMATO_PATH="${CLIMATO_PATH:-${SCORECARD_CPATH:-none}}"
 NORM_FACTORS="${NORM_FACTORS:-stats}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-runs/eval/2022_full_i${INIT_INTERVAL}}"
 TIME="${TIME:-12:00:00}"
@@ -89,7 +92,7 @@ for spec in "${MODELS[@]}"; do
   job_id="$(sbatch --parsable \
     --job-name="gc-score-${model}" \
     --time="${TIME}" \
-    --export=ALL,PROJECT_DIR="${PROJECT_DIR}",MODEL_NAME="${model}",MODEL_CHECKPOINT="${checkpoint}",APATH="${APATH}",NORM_FACTORS="${NORM_FACTORS}",CPATH="${CPATH}",START_DATE="${START_DATE}",END_DATE="${END_DATE}",FORECAST_LENGTH="${FORECAST_LENGTH}",INIT_INTERVAL="${INIT_INTERVAL}",SPECTRUM_LEADS="${SPECTRUM_LEADS}",OUTPUT_ROOT="${OUTPUT_ROOT}",TO_PATH="${score_path}",SPEC_PATH="${spec_path}" \
+    --export=ALL,PROJECT_DIR="${PROJECT_DIR}",MODEL_NAME="${model}",MODEL_CHECKPOINT="${checkpoint}",APATH="${APATH}",NORM_FACTORS="${NORM_FACTORS}",CLIMATO_PATH="${CLIMATO_PATH}",START_DATE="${START_DATE}",END_DATE="${END_DATE}",FORECAST_LENGTH="${FORECAST_LENGTH}",INIT_INTERVAL="${INIT_INTERVAL}",SPECTRUM_LEADS="${SPECTRUM_LEADS}",OUTPUT_ROOT="${OUTPUT_ROOT}",TO_PATH="${score_path}",SPEC_PATH="${spec_path}" \
     scripts/sbatch_scorecard_2022.sh)"
 
   printf "%s\t%s\t%s\t%s\t%s\n" "${model}" "${checkpoint}" "${score_path}" "${spec_path}" "${job_id}" >> "${MANIFEST}"

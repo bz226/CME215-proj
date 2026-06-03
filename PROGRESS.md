@@ -74,7 +74,8 @@ After each user prompt in this job, update this file with:
 - `scripts/sbatch_scorecard_2022.sh`, `scripts/submit_scorecard_2022_all.sh`
   - new Sherlock wrappers for full-year 2022 aggregate scorecard/spectral evaluation;
   - default to 12-hourly 2022 initializations, 10-day rollouts, and spectrum leads `6 120 240`;
-  - submit separate jobs for control, AMSE-5000, AMSE-25000, LAMSE-0.1-LMAX32-5000, and LAMSE-0.5-LMAX127-5000.
+  - submit separate jobs for control, AMSE-5000, AMSE-25000, LAMSE-0.1-LMAX32-5000, and LAMSE-0.5-LMAX127-5000;
+  - climatology override is `CLIMATO_PATH=...`, not `CPATH=...`, because Sherlock modules set `CPATH` to compiler include directories.
 - `scripts/summarize_scorecards.py`
   - new post-processing utility to summarize full-year scorecard Zarr outputs into one CSV table by model, variable, stat, lead time, and remaining coordinates such as pressure level.
 - `scripts/requirements_sherlock.txt`
@@ -161,6 +162,7 @@ Defaults:
 - `INIT_INTERVAL=12` for 12-hourly 2022 initializations;
 - `FORECAST_LENGTH=240` for 10-day rollouts;
 - `SPECTRUM_LEADS="6 120 240"`;
+- `CLIMATO_PATH=none` for no-climatology scorecard fields;
 - output root `runs/eval/2022_full_i12`.
 
 Use `INIT_INTERVAL=24 bash scripts/submit_scorecard_2022_all.sh` for a cheaper daily-initialization aggregate if the 12-hourly run is too expensive.

@@ -38,7 +38,9 @@ fi
 
 APATH="${APATH:-${SCRATCH}/graphcast-small-lamse/era5_1deg_weatherbench2_2022}"
 NORM_FACTORS="${NORM_FACTORS:-stats}"
-CPATH="${CPATH:-none}"
+# Do not use CPATH for climatology here: Sherlock modules set CPATH to compiler
+# include paths, which would be misread by build_scorecard.py as a zarr store.
+CLIMATO_PATH="${CLIMATO_PATH:-${SCORECARD_CPATH:-none}}"
 START_DATE="${START_DATE:-1 Jan 2022 00:00}"
 END_DATE="${END_DATE:-31 Dec 2022 18:00}"
 FORECAST_LENGTH="${FORECAST_LENGTH:-240}"
@@ -71,7 +73,7 @@ echo "MODEL_NAME=${MODEL_NAME}"
 echo "MODEL_CHECKPOINT=${MODEL_CHECKPOINT}"
 echo "APATH=${APATH}"
 echo "NORM_FACTORS=${NORM_FACTORS}"
-echo "CPATH=${CPATH}"
+echo "CLIMATO_PATH=${CLIMATO_PATH}"
 echo "START_DATE=${START_DATE}"
 echo "END_DATE=${END_DATE}"
 echo "FORECAST_LENGTH=${FORECAST_LENGTH}"
@@ -113,11 +115,10 @@ python3 build_scorecard.py \
   --model-checkpoint "${MODEL_CHECKPOINT}" \
   --apath "${APATH}" \
   --norm-factors "${NORM_FACTORS}" \
-  --cpath "${CPATH}" \
+  --cpath "${CLIMATO_PATH}" \
   --start-date "${START_DATE}" \
   --end-date "${END_DATE}" \
   --forecast-length "${FORECAST_LENGTH}" \
   --init-interval "${INIT_INTERVAL}" \
   --to-path "${TO_PATH}" \
   "${SPECTRUM_ARGS[@]}"
-

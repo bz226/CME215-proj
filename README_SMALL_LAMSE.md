@@ -330,6 +330,11 @@ python3 scripts/summarize_scorecards.py \
 Use `stat=std` rows as the deterministic error summary; lower values are
 better. The spectral Zarrs remain the source for amplitude/coherence analysis.
 
+Leave `CLIMATO_PATH` unset for no-climatology evaluation (`--cpath none`). If a
+real climatology zarr is available, pass it as `CLIMATO_PATH=/path/to/climatology.zarr`.
+Do not use the shell variable `CPATH` for this; Sherlock modules set `CPATH` to
+compiler include directories.
+
 ## Hurricane Diagnostics
 
 The paper's hurricane check compares forecast maximum surface wind speed error,
