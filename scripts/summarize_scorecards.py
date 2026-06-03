@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Summarize scorecard zarr outputs into one CSV table."""
 
-from __future__ import annotations
-
 import argparse
 import csv
 from pathlib import Path
@@ -10,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 
-def parse_name_path(spec: str) -> tuple[str, Path]:
+def parse_name_path(spec):
     if "=" not in spec:
         raise argparse.ArgumentTypeError(f"Expected NAME=PATH, got {spec!r}")
     name, path = spec.split("=", 1)
@@ -19,21 +17,21 @@ def parse_name_path(spec: str) -> tuple[str, Path]:
     return name, Path(path)
 
 
-def lead_hours(value) -> float:
+def lead_hours(value):
     arr = np.asarray(value)
     if np.issubdtype(arr.dtype, np.timedelta64):
         return float(arr / np.timedelta64(1, "h"))
     return float(arr)
 
 
-def scalar(value) -> float:
+def scalar(value):
     arr = np.asarray(value)
     if arr.size != 1:
         raise ValueError(f"Expected scalar, got shape {arr.shape}")
     return float(arr.reshape(()))
 
 
-def iter_manifest(path: Path):
+def iter_manifest(path):
     with path.open(newline="") as f:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
@@ -42,11 +40,11 @@ def iter_manifest(path: Path):
                 yield row["model"], Path(score_path)
 
 
-def summarize_run(model: str, path: Path) -> list[dict[str, object]]:
+def summarize_run(model, path):
     import xarray as xr
 
     ds = xr.open_zarr(path)
-    rows: list[dict[str, object]] = []
+    rows = []
     stat_values = list(ds.coords["stat"].values) if "stat" in ds.coords else [None]
     lead_values = list(ds.coords["lead_time"].values) if "lead_time" in ds.coords else [None]
 
@@ -95,7 +93,7 @@ def summarize_run(model: str, path: Path) -> list[dict[str, object]]:
     return rows
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, help="TSV written by submit_scorecard_2022_all.sh")
     parser.add_argument("--score", action="append", default=[], type=parse_name_path, metavar="NAME=PATH")
@@ -108,7 +106,7 @@ def main() -> None:
     if not runs:
         raise SystemExit("Provide --manifest or at least one --score NAME=PATH")
 
-    rows: list[dict[str, object]] = []
+    rows = []
     for model, path in runs:
         rows.extend(summarize_run(model, path))
 

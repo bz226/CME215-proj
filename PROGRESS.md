@@ -78,6 +78,7 @@ After each user prompt in this job, update this file with:
   - climatology override is `CLIMATO_PATH=...`, not `CPATH=...`, because Sherlock modules set `CPATH` to compiler include directories.
 - `scripts/summarize_scorecards.py`
   - new post-processing utility to summarize full-year scorecard Zarr outputs into one CSV table by model, variable, stat, lead time, and remaining coordinates such as pressure level.
+  - made compatible with older Sherlock `python3` by removing `from __future__ import annotations` and modern builtin generic annotations.
 - `scripts/requirements_sherlock.txt`
   - added `matplotlib==3.8.3` for `plot_prediction_error.py` PNG output.
 - `scripts/run_lamse_training.sh`, `scripts/sbatch_lamse_training.sh`, `scripts/submit_final_lamse.sh`
