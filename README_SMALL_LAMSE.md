@@ -330,6 +330,22 @@ python3 scripts/summarize_scorecards.py \
 Use `stat=std` rows as the deterministic error summary; lower values are
 better. The spectral Zarrs remain the source for amplitude/coherence analysis.
 
+Plot the main aggregate deterministic error curves and AMSE-relative
+improvements:
+
+```bash
+python3 scripts/plot_scorecard_summary.py \
+  --summary-csv runs/eval/2022_full_i12/scorecard_summary.csv \
+  --out-dir runs/eval/2022_full_i12/plots \
+  --fields z:500 t:850 2t 10m_wind_speed msl \
+  --stat std \
+  --metric mean \
+  --reference-model amse5000
+```
+
+This writes one error-by-lead PNG, one improvement-vs-AMSE PNG, and one ranking
+CSV per selected field.
+
 Leave `CLIMATO_PATH` unset for no-climatology evaluation (`--cpath none`). If a
 real climatology zarr is available, pass it as `CLIMATO_PATH=/path/to/climatology.zarr`.
 Do not use the shell variable `CPATH` for this; Sherlock modules set `CPATH` to

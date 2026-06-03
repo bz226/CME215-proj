@@ -32,6 +32,7 @@ After each user prompt in this job, update this file with:
 - Current AMSE/LAMSE fine-tuning is single-step training: `scripts/run_amse_training.sh` and `scripts/run_lamse_training.sh` default `FORECAST_LENGTH=1`, and `train.py --forecast-length` is measured in 6-hour model steps. Thus each training example backpropagates through a 6h forecast. The January 2022 evaluation/plotting is multi-step rollout: `--forecast-length 240` in the evaluation scripts means 240 forecast hours, or 40 autoregressive 6h steps.
 - Current evaluation data are held out in 2022. January 2022 has completed as the smoke evaluation; full-year 2022 remains the intended main evaluation.
 - Paper-aligned evaluation should prioritize aggregate verification over calendar year 2022. The paper uses single-event maps as illustrative case studies, but its main statistical and spectral conclusions are aggregated over 2022 forecast initializations. Treat the current `2022-01-01 00:00` plots as qualitative diagnostics only, not as evidence for final AMSE/LAMSE ranking.
+- Course-project evaluation recommendation: January-only forecasts are acceptable as smoke tests and qualitative examples, but not strong enough as the main result because one initialization/month can be cherry-picked and does not establish model ranking. Use the full-year 2022 aggregate scorecard/spectral plots as the primary result, then add a Hurricane Ian 2022 tracking/intensity figure as a compelling case study if time permits.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.
 - LAMSE-5000 should use the same `plot_prediction_error.py` workflow as AMSE-5000, with checkpoint `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz` and output directory `runs/prediction_error/lamse5000_20220101`.
 - A multi-model comparison script now exists for ground truth, pre-finetuned, AMSE-5000, LAMSE-0.1-5000, and optional extra checkpoints such as LAMSE-0.3-5000.
@@ -81,6 +82,10 @@ After each user prompt in this job, update this file with:
   - made compatible with older Sherlock `python3` by removing `from __future__ import annotations` and modern builtin generic annotations.
   - now loads each compact scorecard Zarr before reducing, avoiding Dask's unsupported full-axis `nanmedian` path.
   - now bypasses xarray reductions for summary statistics and computes mean/median/count with NumPy after materializing each selected slice, avoiding Dask `nanmedian` even when arrays remain Dask-backed.
+- `scripts/plot_scorecard_summary.py`
+  - new full-year aggregate plotting helper for `scorecard_summary.csv`;
+  - writes per-field error-by-lead PNGs, AMSE-relative percent-improvement PNGs, and per-lead ranking CSVs for selected variables/levels.
+  - forces Matplotlib's noninteractive `Agg` backend to avoid macOS/Python.app GUI backend crashes and work cleanly on Sherlock.
 - `scripts/requirements_sherlock.txt`
   - added `matplotlib==3.8.3` for `plot_prediction_error.py` PNG output.
 - `scripts/run_lamse_training.sh`, `scripts/sbatch_lamse_training.sh`, `scripts/submit_final_lamse.sh`
@@ -179,6 +184,20 @@ python3 scripts/summarize_scorecards.py \
 ```
 
 Interpret `stat=std` rows as deterministic error summaries; lower is better. Keep the spectral Zarrs for amplitude/coherence analysis.
+
+Plot the main full-year aggregate curves:
+
+```bash
+python3 scripts/plot_scorecard_summary.py \
+  --summary-csv runs/eval/2022_full_i12/scorecard_summary.csv \
+  --out-dir runs/eval/2022_full_i12/plots \
+  --fields z:500 t:850 2t 10m_wind_speed msl \
+  --stat std \
+  --metric mean \
+  --reference-model amse5000
+```
+
+For the retry root, replace `2022_full_i12` with `2022_full_i12_retry`.
 
 3. Run a January 2022 AMSE-25000 scorecard/spectral smoke evaluation, then promote the same scorecard path to all of 2022 before making final claims:
 
