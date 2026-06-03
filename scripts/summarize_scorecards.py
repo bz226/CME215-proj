@@ -4,6 +4,7 @@
 import argparse
 import csv
 from pathlib import Path
+import warnings
 
 import numpy as np
 
@@ -31,6 +32,31 @@ def scalar(value):
     return float(arr.reshape(()))
 
 
+def coord_value(da, dim, idx):
+    coord = da.coords[dim].values[idx] if dim in da.coords else idx
+    return coord.item() if hasattr(coord, "item") else coord
+
+
+def reduce_over_idate(da):
+    reduce_dims = [dim for dim in da.dims if dim == "idate"]
+    kept_dims = [dim for dim in da.dims if dim not in reduce_dims]
+    values = np.asarray(da.data, dtype=np.float64)
+
+    if reduce_dims:
+        axes = tuple(da.get_axis_num(dim) for dim in reduce_dims)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            mean_values = np.nanmean(values, axis=axes)
+            median_values = np.nanmedian(values, axis=axes)
+        count_values = np.sum(np.isfinite(values), axis=axes)
+    else:
+        mean_values = values
+        median_values = values
+        count_values = np.isfinite(values).astype(np.int64)
+
+    return kept_dims, mean_values, median_values, count_values
+
+
 def iter_manifest(path):
     with path.open(newline="") as f:
         reader = csv.DictReader(f, delimiter="\t")
@@ -43,7 +69,9 @@ def iter_manifest(path):
 def summarize_run(model, path):
     import xarray as xr
 
-    ds = xr.open_zarr(path)
+    # Scorecard zarrs are compact summary arrays. Loading them up front avoids
+    # Dask's unsupported full-axis nanmedian path when reducing over idate.
+    ds = xr.open_zarr(path).load()
     rows = []
     stat_values = list(ds.coords["stat"].values) if "stat" in ds.coords else [None]
     lead_values = list(ds.coords["lead_time"].values) if "lead_time" in ds.coords else [None]
@@ -54,14 +82,9 @@ def summarize_run(model, path):
             da_stat = base.sel(stat=stat) if stat is not None and "stat" in base.dims else base
             for lead in lead_values:
                 da = da_stat.sel(lead_time=lead) if lead is not None and "lead_time" in da_stat.dims else da_stat
-                reduce_dims = [dim for dim in da.dims if dim == "idate"]
-                count_da = da.count(dim=reduce_dims) if reduce_dims else da.count()
-                mean_da = da.mean(dim=reduce_dims, skipna=True) if reduce_dims else da
-                median_da = da.median(dim=reduce_dims, skipna=True) if reduce_dims else da
-
-                kept_dims = list(mean_da.dims)
+                kept_dims, mean_values, median_values, count_values = reduce_over_idate(da)
                 if kept_dims:
-                    for index in np.ndindex(*(mean_da.sizes[dim] for dim in kept_dims)):
+                    for index in np.ndindex(*(da.sizes[dim] for dim in kept_dims)):
                         selector = dict(zip(kept_dims, index))
                         row = {
                             "model": model,
@@ -69,13 +92,12 @@ def summarize_run(model, path):
                             "variable": variable,
                             "stat": "" if stat is None else str(stat),
                             "lead_hours": "" if lead is None else lead_hours(lead),
-                            "mean": scalar(mean_da.isel(selector).values),
-                            "median": scalar(median_da.isel(selector).values),
-                            "count": int(scalar(count_da.isel(selector).values)),
+                            "mean": scalar(mean_values[index]),
+                            "median": scalar(median_values[index]),
+                            "count": int(scalar(count_values[index])),
                         }
                         for dim, idx in selector.items():
-                            coord = mean_da.coords[dim].values[idx] if dim in mean_da.coords else idx
-                            row[dim] = coord.item() if hasattr(coord, "item") else coord
+                            row[dim] = coord_value(da, dim, idx)
                         rows.append(row)
                 else:
                     rows.append(
@@ -85,9 +107,9 @@ def summarize_run(model, path):
                             "variable": variable,
                             "stat": "" if stat is None else str(stat),
                             "lead_hours": "" if lead is None else lead_hours(lead),
-                            "mean": scalar(mean_da.values),
-                            "median": scalar(median_da.values),
-                            "count": int(scalar(count_da.values)),
+                            "mean": scalar(mean_values),
+                            "median": scalar(median_values),
+                            "count": int(scalar(count_values)),
                         }
                     )
     return rows
