@@ -33,6 +33,9 @@ After each user prompt in this job, update this file with:
 - Current evaluation data are held out in 2022. January 2022 has completed as the smoke evaluation; full-year 2022 remains the intended main evaluation.
 - Paper-aligned evaluation should prioritize aggregate verification over calendar year 2022. The paper uses single-event maps as illustrative case studies, but its main statistical and spectral conclusions are aggregated over 2022 forecast initializations. Treat the current `2022-01-01 00:00` plots as qualitative diagnostics only, not as evidence for final AMSE/LAMSE ranking.
 - Course-project evaluation recommendation: January-only forecasts are acceptable as smoke tests and qualitative examples, but not strong enough as the main result because one initialization/month can be cherry-picked and does not establish model ranking. Use the full-year 2022 aggregate scorecard/spectral plots as the primary result, then add a Hurricane Ian 2022 tracking/intensity figure as a compelling case study if time permits.
+- Current full-year `10m_wind_speed` aggregate improvement plot versus AMSE-5000 shows the pre-finetuned checkpoint has substantially lower mean `std` error at medium/long leads, while AMSE-25000 and both LAMSE variants are near or below AMSE-5000. This means AMSE/LAMSE fine-tuning is not improving this aggregate 10m wind metric; check other variables and raw error/ranking CSVs before making a final model-ranking claim.
+- The uploaded full-year 2022 aggregate plots for `2t`, `t850`, `msl`, and `10m_wind_speed` show the same broad deterministic-error pattern: pre-finetuned has lower weighted `std` error than AMSE-5000 through most medium/long leads, while AMSE-25000 is only marginally different from AMSE-5000 and LAMSE variants are mostly slightly worse. This makes the main aggregate finding negative for AMSE/LAMSE on standard error metrics, unless spectral diagnostics or a targeted case study show a different tradeoff.
+- The Hurricane Ian 2022 diagnostic plot shows a targeted counterpoint to the full-year aggregate: pre-finetuned has the weakest long-lead storm intensity, with increasingly negative 10 m wind error and positive minimum-pressure error, while LAMSE-0.1/0.5 reduce long-lead intensity bias and LAMSE-0.5 gives the lowest day-10 position error in this case. Treat this as a case-study benefit for localized cyclone structure, not a replacement for the full-year aggregate result.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.
 - LAMSE-5000 should use the same `plot_prediction_error.py` workflow as AMSE-5000, with checkpoint `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz` and output directory `runs/prediction_error/lamse5000_20220101`.
 - A multi-model comparison script now exists for ground truth, pre-finetuned, AMSE-5000, LAMSE-0.1-5000, and optional extra checkpoints such as LAMSE-0.3-5000.
@@ -72,6 +75,10 @@ After each user prompt in this job, update this file with:
   - new paper-style tropical cyclone diagnostic using a supplied HURDAT2/CSV track file;
   - supports multiple checkpoints through repeated `--checkpoint NAME=PATH`;
   - writes per-case and lead-aggregated wind, pressure, and position-error metrics plus a three-panel lead-time summary plot.
+- `plot_hurricane_figure5.py`
+  - new Figure-5-style Hurricane Ian map utility;
+  - runs one forecast initialization, crops around the best-track storm center, and plots shaded 10 m wind speed plus MSLP contours for the analysis target and selected checkpoint forecasts;
+  - defaults to the paper-style 5-day Ian case: init `23 Sep 2022 12:00`, lead `120h`, valid `28 Sep 2022 12:00`.
 - `scripts/sbatch_scorecard_2022.sh`, `scripts/submit_scorecard_2022_all.sh`
   - new Sherlock wrappers for full-year 2022 aggregate scorecard/spectral evaluation;
   - default to 12-hourly 2022 initializations, 10-day rollouts, and spectrum leads `6 120 240`;
@@ -199,7 +206,69 @@ python3 scripts/plot_scorecard_summary.py \
 
 For the retry root, replace `2022_full_i12` with `2022_full_i12_retry`.
 
-3. Run a January 2022 AMSE-25000 scorecard/spectral smoke evaluation, then promote the same scorecard path to all of 2022 before making final claims:
+3. Run the Hurricane Ian 2022 paper-style case study using the same model set as the full-year aggregate. Prefer `--truth-source analysis` for the main course-project plot because it compares to the staged 1-degree analysis fields; use `--truth-source best_track` as an optional observed-track/intensity sensitivity check.
+
+```bash
+source .venv-sherlock/activate_graphcast_small_lamse.sh
+python3 -m pip install matplotlib==3.8.3
+export JAX_PLATFORMS=cuda,cpu
+export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"
+export TRACK_DIR="${SCRATCH:?Set SCRATCH}/graphcast-small-lamse/tracks"
+mkdir -p "${TRACK_DIR}"
+
+# If this file is not already present, download the current Atlantic HURDAT2 text
+# file from the NHC HURDAT2 page and save it as:
+#   ${TRACK_DIR}/hurdat2_atlantic.txt
+
+python3 hurricane_performance_check.py \
+  --track-file "${TRACK_DIR}/hurdat2_atlantic.txt" \
+  --storm-name IAN \
+  --storm-year 2022 \
+  --apath "${SCRATCH}/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
+  --norm-factors stats \
+  --checkpoint "prefinetuned=${PARAMS_DIR}/graphcast_small_lamse.000000.npz" \
+  --checkpoint "amse5000=${PARAMS_DIR}/graphcast_small_amse.005000.npz" \
+  --checkpoint "amse25000=${PARAMS_DIR}/graphcast_small_amse.025000.npz" \
+  --checkpoint "lamse0p1_lmax32=${PARAMS_DIR}/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
+  --checkpoint "lamse0p5_lmax127=${PARAMS_DIR}/graphcast_small_lamse_lam0p5_lmax127.005000.npz" \
+  --init-start "19 Sep 2022 00:00" \
+  --init-end "27 Sep 2022 00:00" \
+  --init-interval-hours 24 \
+  --forecast-length 240 \
+  --lead-hours 6 12 18 24 36 48 72 96 120 144 168 192 216 240 \
+  --truth-source analysis \
+  --out-dir runs/hurricane_check/ian2022_analysis \
+  --overwrite
+```
+
+4. Run the Figure-5-style Ian map for the same event as the paper: valid `28 Sep 2022 12:00 UTC`, using a 5-day forecast initialized `23 Sep 2022 12:00 UTC`.
+
+```bash
+python3 plot_hurricane_figure5.py \
+  --track-file "${TRACK_DIR}/hurdat2_atlantic.txt" \
+  --storm-name IAN \
+  --storm-year 2022 \
+  --apath "${SCRATCH}/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
+  --norm-factors stats \
+  --checkpoint "prefinetuned=${PARAMS_DIR}/graphcast_small_lamse.000000.npz" \
+  --checkpoint "amse5000=${PARAMS_DIR}/graphcast_small_amse.005000.npz" \
+  --checkpoint "lamse0p5_lmax127=${PARAMS_DIR}/graphcast_small_lamse_lam0p5_lmax127.005000.npz" \
+  --init-date "23 Sep 2022 12:00" \
+  --lead-hours 120 \
+  --forecast-length 120 \
+  --lat-min 24 \
+  --lat-max 28 \
+  --lon-min -85 \
+  --lon-max -81 \
+  --wind-vmin 18 \
+  --wind-vmax 40 \
+  --out-dir runs/hurricane_check/ian2022_figure5 \
+  --overwrite
+```
+
+This writes `runs/hurricane_check/ian2022_figure5/ian2022_figure5.png`. Add more `--checkpoint` lines, such as `amse25000` or `lamse0p1_lmax32`, if a wider panel stack is acceptable.
+
+5. Run a January 2022 AMSE-25000 scorecard/spectral smoke evaluation, then promote the same scorecard path to all of 2022 before making final claims:
 
 ```bash
 source .venv-sherlock/activate_graphcast_small_lamse.sh
