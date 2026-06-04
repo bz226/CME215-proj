@@ -6,6 +6,8 @@ set -euo pipefail
 # Default model set:
 #   control, AMSE-5000, AMSE-25000, LAMSE-0.1-LMAX32-5000,
 #   LAMSE-0.5-LMAX127-5000.
+# Optional controls:
+#   INCLUDE_MSE=1 adds MSE-5000 after the pre-finetuned control.
 #
 # Submit from the project root:
 #   bash scripts/submit_scorecard_2022_all.sh
@@ -13,6 +15,7 @@ set -euo pipefail
 # Common overrides:
 #   INIT_INTERVAL=24 bash scripts/submit_scorecard_2022_all.sh
 #   MODELS_TO_RUN="amse5000 lamse0p5_lmax127_5000" bash scripts/submit_scorecard_2022_all.sh
+#   INCLUDE_MSE=1 MODELS_TO_RUN="mse5000" bash scripts/submit_scorecard_2022_all.sh
 #   CLIMATO_PATH=/path/to/era5_1deg_climatology.zarr bash scripts/submit_scorecard_2022_all.sh
 #   SKIP_MISSING=1 bash scripts/submit_scorecard_2022_all.sh
 
@@ -52,6 +55,13 @@ printf "model\tcheckpoint\tscore_path\tspectrum_path\tjob_id\n" > "${MANIFEST}"
 
 declare -a MODELS=(
   "control|${PARAMS_DIR}/graphcast_small_lamse.000000.npz"
+)
+
+if [[ "${INCLUDE_MSE:-0}" == "1" ]]; then
+  MODELS+=("mse5000|${PARAMS_DIR}/graphcast_small_mse.005000.npz")
+fi
+
+MODELS+=(
   "amse5000|${PARAMS_DIR}/graphcast_small_amse.005000.npz"
   "amse25000|${PARAMS_DIR}/graphcast_small_amse.025000.npz"
   "lamse0p1_lmax32_5000|${PARAMS_DIR}/graphcast_small_lamse_lam0p1_lmax32.005000.npz"

@@ -29,6 +29,8 @@ from plot_prediction_error import (
 
 DEFAULT_MODEL_LABELS = {
     "prefinetuned": "Pre-finetuned",
+    "mse": "MSE-5000",
+    "mse5000": "MSE-5000",
     "amse": "AMSE-5000",
     "lamse": "LAMSE-0.1-5000",
 }
@@ -103,6 +105,9 @@ def label_for_model(model: str) -> str:
     match = re.fullmatch(r"amse(\d+)", model)
     if match:
         return f"AMSE-{int(match.group(1))}"
+    match = re.fullmatch(r"mse(\d+)", model)
+    if match:
+        return f"MSE-{int(match.group(1))}"
     return model.replace("_", " ")
 
 

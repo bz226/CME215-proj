@@ -144,6 +144,17 @@ BATCH_NUMBER=1000 \
   sbatch scripts/sbatch_amse_training.sh
 ```
 
+For a conventional weighted-MSE fine-tuning control, use the MSE wrapper. It
+passes neither `--spectral-amse` nor `--lamse`, so `train.py` uses its built-in
+spatial MSE loss, and saves checkpoints under
+`$PARAMS_DIR/graphcast_small_mse.<batch>.npz`:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+BATCH_NUMBER=1000 \
+  sbatch scripts/sbatch_mse_training.sh
+```
+
 The `sbatch` wrappers write project-local logs to `logs/*.log`. The training wrapper also writes per-example losses to `runs/<loss_mode>_<lambda>_job_<jobid>.csv` unless `CSV_PATH` is set.
 
 The Sherlock wrappers submit to the `serc` partition by default. The training `sbatch` script requests `GPU_MEM:80GB` and `256G` host RAM by default. If Sherlock rejects that feature for your account or partition, list available GPU features with:
@@ -208,6 +219,13 @@ LAMSE_LAMBDA=0.1 LAMSE_LMAX=32 START_BATCH=1000 \
   bash scripts/submit_final_lamse.sh
 ```
 
+For the matching 5000-batch MSE control:
+
+```bash
+ANALYSIS_PATH=$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2 \
+  bash scripts/submit_final_mse.sh
+```
+
 ## Multi-Model Prediction Comparison
 
 After AMSE-5000 and LAMSE-5000 checkpoints exist, compare ground truth,
@@ -225,6 +243,7 @@ python3 compare_four_predictions.py \
   --prefinetuned-checkpoint "$PARAMS_DIR/graphcast_small_lamse.000000.npz" \
   --amse-checkpoint "$PARAMS_DIR/graphcast_small_amse.005000.npz" \
   --lamse-checkpoint "$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
+  --extra-checkpoint "mse5000=$PARAMS_DIR/graphcast_small_mse.005000.npz" \
   --extra-checkpoint "amse25000=$PARAMS_DIR/graphcast_small_amse.025000.npz" \
   --extra-checkpoint "lamse0p3=$PARAMS_DIR/graphcast_small_lamse_lam0p3_lmax32.005000.npz" \
   --apath "$SCRATCH/graphcast-small-lamse/era5_1deg_weatherbench2_2022" \
@@ -299,9 +318,16 @@ export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast
 bash scripts/submit_scorecard_2022_all.sh
 ```
 
+After the MSE control checkpoint exists, include it with:
+
+```bash
+INCLUDE_MSE=1 bash scripts/submit_scorecard_2022_all.sh
+```
+
 This submits separate Slurm jobs for:
 
 - `control`: `$PARAMS_DIR/graphcast_small_lamse.000000.npz`
+- optional `mse5000`: `$PARAMS_DIR/graphcast_small_mse.005000.npz`
 - `amse5000`: `$PARAMS_DIR/graphcast_small_amse.005000.npz`
 - `amse25000`: `$PARAMS_DIR/graphcast_small_amse.025000.npz`
 - `lamse0p1_lmax32_5000`: `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz`

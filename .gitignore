@@ -5,6 +5,7 @@ __pycache__/
 .benchmarks/
 .venv*/
 venv/
+.DS_Store
 
 # Local model/data artifacts
 params/
@@ -16,4 +17,8 @@ stats/
 # Local logs and generated outputs
 runs/
 logs/
+plots/
 *.log
+*.png
+plots.zip
+course_report.tex

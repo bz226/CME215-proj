@@ -1,6 +1,6 @@
 # GraphCast Small LAMSE Progress
 
-Updated: 2026-05-31
+Updated: 2026-06-04
 
 ## Working Rule
 
@@ -36,6 +36,16 @@ After each user prompt in this job, update this file with:
 - Current full-year `10m_wind_speed` aggregate improvement plot versus AMSE-5000 shows the pre-finetuned checkpoint has substantially lower mean `std` error at medium/long leads, while AMSE-25000 and both LAMSE variants are near or below AMSE-5000. This means AMSE/LAMSE fine-tuning is not improving this aggregate 10m wind metric; check other variables and raw error/ranking CSVs before making a final model-ranking claim.
 - The uploaded full-year 2022 aggregate plots for `2t`, `t850`, `msl`, and `10m_wind_speed` show the same broad deterministic-error pattern: pre-finetuned has lower weighted `std` error than AMSE-5000 through most medium/long leads, while AMSE-25000 is only marginally different from AMSE-5000 and LAMSE variants are mostly slightly worse. This makes the main aggregate finding negative for AMSE/LAMSE on standard error metrics, unless spectral diagnostics or a targeted case study show a different tradeoff.
 - The Hurricane Ian 2022 diagnostic plot shows a targeted counterpoint to the full-year aggregate: pre-finetuned has the weakest long-lead storm intensity, with increasingly negative 10 m wind error and positive minimum-pressure error, while LAMSE-0.1/0.5 reduce long-lead intensity bias and LAMSE-0.5 gives the lowest day-10 position error in this case. Treat this as a case-study benefit for localized cyclone structure, not a replacement for the full-year aggregate result.
+- The Figure-5-style Hurricane Ian map is not very meaningful as a visual analogue to the paper because the current setup uses 1-degree GraphCast Small/ERA5 fields. The storm core is only a few grid cells wide, the wind shading is blocky, and small center/pressure differences can be dominated by grid resolution. In the report, mention this explicitly and use the map only as a qualitative limitation/case-study figure, not as quantitative evidence.
+- Current progress is enough for a 5-page one-month course-project report if framed as a constrained replication/extension rather than a successful performance improvement. The strongest story is: implemented AMSE/LAMSE fine-tuning for GraphCast Small, ran multiple checkpoints, evaluated on held-out 2022 full-year aggregates, found that AMSE/LAMSE worsened standard deterministic error versus pre-finetuned, but saw a localized Hurricane Ian case-study tradeoff. Report caveats should emphasize 1-degree resolution, single-step fine-tuning, limited training data/budget, and incomplete parity with the paper's high-resolution/full methodology.
+- `.gitignore` now ignores generated `*.png` plot artifacts so evaluation figures are not accidentally staged.
+- `.gitignore` now also ignores the temporary top-level `plots/` directory for local result storage.
+- The top-level `plots/` folder now exists locally and `git status --ignored plots` reports it as ignored.
+- Drafted `course_report.tex` as a compact LaTeX course report using the current plots. It follows the requested structure: introduction/background, existing-method difficulty, problem statement, soft physics constraints, results/discussion, open questions, and future work. Local validation checked word count, figure paths, citation labels, and rough brace balance; local `pdflatex`/`latexmk` are not installed, so PDF compilation still needs a LaTeX environment.
+- Created the Overleaf upload bundle at `plots/course_report_overleaf_bundle.zip`. It contains `course_report.tex` and the five referenced PNGs under `plots/`, preserving the paths used by `\includegraphics`; the zip is about 728 KB and is ignored by Git through the top-level `plots/` rule.
+- Revised `course_report.tex` against the style/content of the supplied `graphcast_lamse_project_draft (1).tex` and `cme_215_proj.pdf`: added the abstract, notation macros, MSE amplitude argument, PSD/coherence/AMSE definitions, and retained the final full-year negative-result narrative. Refreshed `plots/course_report_overleaf_bundle.zip`; `unzip -t` passes and the bundle is about 729 KB.
+- MSE fine-tuning is now the next useful control experiment. It should use the same 2016-2017 single-step training setup as AMSE/LAMSE, but with neither `--spectral-amse` nor `--lamse`, producing `$PARAMS_DIR/graphcast_small_mse.005000.npz` for held-out 2022 comparison.
+- Git hygiene note: `course_report.tex`, `plots.zip`, and `.DS_Store` should not be included in pushes; they are local/generated artifacts and are ignored.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.
 - LAMSE-5000 should use the same `plot_prediction_error.py` workflow as AMSE-5000, with checkpoint `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz` and output directory `runs/prediction_error/lamse5000_20220101`.
 - A multi-model comparison script now exists for ground truth, pre-finetuned, AMSE-5000, LAMSE-0.1-5000, and optional extra checkpoints such as LAMSE-0.3-5000.
@@ -95,6 +105,14 @@ After each user prompt in this job, update this file with:
   - forces Matplotlib's noninteractive `Agg` backend to avoid macOS/Python.app GUI backend crashes and work cleanly on Sherlock.
 - `scripts/requirements_sherlock.txt`
   - added `matplotlib==3.8.3` for `plot_prediction_error.py` PNG output.
+- `scripts/run_mse_training.sh`, `scripts/sbatch_mse_training.sh`, `scripts/submit_final_mse.sh`
+  - new conventional weighted-MSE control wrappers analogous to the AMSE final-run scripts;
+  - intentionally pass neither `--spectral-amse` nor `--lamse`, selecting `train.py`'s built-in spatial MSE loss;
+  - save checkpoints as `$PARAMS_DIR/graphcast_small_mse.<batch>.npz` and default the final run to 5000 batches with 500-batch checkpoint cadence.
+- MSE evaluation plumbing
+  - `scripts/submit_scorecard_2022_all.sh` supports `INCLUDE_MSE=1` to add `mse5000` to the full-year scorecard model set without breaking existing runs before the checkpoint exists;
+  - `compare_four_predictions.py` labels `mse5000` as `MSE-5000` in plots and CSV outputs;
+  - `README_SMALL_LAMSE.md` documents the MSE control submission path and includes it in the multi-model comparison example.
 - `scripts/run_lamse_training.sh`, `scripts/sbatch_lamse_training.sh`, `scripts/submit_final_lamse.sh`
   - new long-run LAMSE wrappers analogous to the AMSE final-run scripts;
   - checkpoint names include lambda and bandlimit, e.g. `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz`;
