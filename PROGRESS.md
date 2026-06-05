@@ -45,6 +45,8 @@ After each user prompt in this job, update this file with:
 - Created the Overleaf upload bundle at `plots/course_report_overleaf_bundle.zip`. It contains `course_report.tex` and the five referenced PNGs under `plots/`, preserving the paths used by `\includegraphics`; the zip is about 728 KB and is ignored by Git through the top-level `plots/` rule.
 - Revised `course_report.tex` against the style/content of the supplied `graphcast_lamse_project_draft (1).tex` and `cme_215_proj.pdf`: added the abstract, notation macros, MSE amplitude argument, PSD/coherence/AMSE definitions, and retained the final full-year negative-result narrative. Refreshed `plots/course_report_overleaf_bundle.zip`; `unzip -t` passes and the bundle is about 729 KB.
 - MSE fine-tuning is now the next useful control experiment. It should use the same 2016-2017 single-step training setup as AMSE/LAMSE, but with neither `--spectral-amse` nor `--lamse`, producing `$PARAMS_DIR/graphcast_small_mse.005000.npz` for held-out 2022 comparison.
+- MSE aggregate comparison graphs are now wired through `scripts/plot_mse_scorecard_comparison.sh`. After the MSE scorecard finishes, run it to build `scorecard_summary_with_mse.csv` and `plots_with_mse/*_error_by_lead.png` / `*_improvement_vs_amse5000.png`.
+- Report-style plots with MSE are now wired through `scripts/build_report_plots_with_mse.sh`. Its default aggregate step rewrites the top-level `plots/*_std_mean_*.png` files used by the report, and optional `RUN_SINGLE_CASE=1` / `RUN_HURRICANE=1` modes regenerate the January showcase/spectral and Hurricane Ian diagnostics with MSE included.
 - Git hygiene note: `course_report.tex`, `plots.zip`, and `.DS_Store` should not be included in pushes; they are local/generated artifacts and are ignored.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.
 - LAMSE-5000 should use the same `plot_prediction_error.py` workflow as AMSE-5000, with checkpoint `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz` and output directory `runs/prediction_error/lamse5000_20220101`.
@@ -103,6 +105,15 @@ After each user prompt in this job, update this file with:
   - new full-year aggregate plotting helper for `scorecard_summary.csv`;
   - writes per-field error-by-lead PNGs, AMSE-relative percent-improvement PNGs, and per-lead ranking CSVs for selected variables/levels.
   - forces Matplotlib's noninteractive `Agg` backend to avoid macOS/Python.app GUI backend crashes and work cleanly on Sherlock.
+  - now labels `mse5000` as `MSE-5000` and uses a stable model order for aggregate comparison plots.
+- `scripts/plot_mse_scorecard_comparison.sh`
+  - new convenience wrapper that rebuilds a summary CSV from existing scorecard Zarr stores and plots aggregate comparison graphs with MSE-5000 included;
+  - reads Zarr paths directly instead of relying on `scorecard_manifest.tsv`, so it still works if a partial MSE-only scorecard submission rewrote the manifest.
+- `scripts/build_report_plots_with_mse.sh`
+  - new report-oriented plot wrapper that regenerates the existing top-level report plot filenames with MSE-5000 included;
+  - optionally regenerates the January single-case value/error/spectral plots and Hurricane Ian summary with MSE if run on Sherlock with the MSE checkpoint available.
+- `plot_hurricane_figure5.py`
+  - labels `mse5000` as `MSE-5000` when included in Figure-5-style storm maps.
 - `scripts/requirements_sherlock.txt`
   - added `matplotlib==3.8.3` for `plot_prediction_error.py` PNG output.
 - `scripts/run_mse_training.sh`, `scripts/sbatch_mse_training.sh`, `scripts/submit_final_mse.sh`

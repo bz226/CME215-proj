@@ -324,6 +324,14 @@ After the MSE control checkpoint exists, include it with:
 INCLUDE_MSE=1 bash scripts/submit_scorecard_2022_all.sh
 ```
 
+To evaluate only MSE-5000 into an existing scorecard directory without losing
+the existing manifest entries, append the manifest row:
+
+```bash
+APPEND_MANIFEST=1 INCLUDE_MSE=1 MODELS_TO_RUN="mse5000" OUTPUT_ROOT=runs/eval/2022_full_i12 \
+  bash scripts/submit_scorecard_2022_all.sh
+```
+
 This submits separate Slurm jobs for:
 
 - `control`: `$PARAMS_DIR/graphcast_small_lamse.000000.npz`
@@ -371,6 +379,40 @@ python3 scripts/plot_scorecard_summary.py \
 
 This writes one error-by-lead PNG, one improvement-vs-AMSE PNG, and one ranking
 CSV per selected field.
+
+After MSE-5000 has been evaluated, build the same aggregate comparison graphs
+with the MSE control included:
+
+```bash
+bash scripts/plot_mse_scorecard_comparison.sh
+```
+
+This writes `scorecard_summary_with_mse.csv` and comparison PNGs under
+`runs/eval/2022_full_i12/plots_with_mse/` by default. Override `EVAL_ROOT`,
+`MSE_SCORE_PATH`, `FIELDS`, `STAT`, `METRIC`, or `REFERENCE_MODEL` if needed.
+
+For the course-report figures, regenerate the top-level `plots/*.png` files so
+the existing report image paths pick up the MSE curve:
+
+```bash
+EVAL_ROOT=runs/eval/2022_full_i12_retry REPORT_PLOTS_DIR=plots \
+  bash scripts/build_report_plots_with_mse.sh
+```
+
+To also regenerate the January 10 m wind showcase and spectral plot with an
+MSE panel/curve, run the same wrapper on Sherlock with:
+
+```bash
+RUN_SINGLE_CASE=1 EVAL_ROOT=runs/eval/2022_full_i12_retry REPORT_PLOTS_DIR=plots \
+  bash scripts/build_report_plots_with_mse.sh
+```
+
+To also regenerate the Hurricane Ian diagnostic with MSE included:
+
+```bash
+RUN_HURRICANE=1 EVAL_ROOT=runs/eval/2022_full_i12_retry REPORT_PLOTS_DIR=plots \
+  bash scripts/build_report_plots_with_mse.sh
+```
 
 Leave `CLIMATO_PATH` unset for no-climatology evaluation (`--cpath none`). If a
 real climatology zarr is available, pass it as `CLIMATO_PATH=/path/to/climatology.zarr`.

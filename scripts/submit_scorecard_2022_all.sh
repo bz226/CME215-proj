@@ -16,6 +16,7 @@ set -euo pipefail
 #   INIT_INTERVAL=24 bash scripts/submit_scorecard_2022_all.sh
 #   MODELS_TO_RUN="amse5000 lamse0p5_lmax127_5000" bash scripts/submit_scorecard_2022_all.sh
 #   INCLUDE_MSE=1 MODELS_TO_RUN="mse5000" bash scripts/submit_scorecard_2022_all.sh
+#   APPEND_MANIFEST=1 INCLUDE_MSE=1 MODELS_TO_RUN="mse5000" bash scripts/submit_scorecard_2022_all.sh
 #   CLIMATO_PATH=/path/to/era5_1deg_climatology.zarr bash scripts/submit_scorecard_2022_all.sh
 #   SKIP_MISSING=1 bash scripts/submit_scorecard_2022_all.sh
 
@@ -50,8 +51,12 @@ SKIP_MISSING="${SKIP_MISSING:-0}"
 MODELS_TO_RUN="${MODELS_TO_RUN:-}"
 
 mkdir -p "${OUTPUT_ROOT}"
-MANIFEST="${OUTPUT_ROOT}/scorecard_manifest.tsv"
-printf "model\tcheckpoint\tscore_path\tspectrum_path\tjob_id\n" > "${MANIFEST}"
+MANIFEST="${MANIFEST:-${OUTPUT_ROOT}/scorecard_manifest.tsv}"
+if [[ "${APPEND_MANIFEST:-0}" == "1" && -f "${MANIFEST}" ]]; then
+  :
+else
+  printf "model\tcheckpoint\tscore_path\tspectrum_path\tjob_id\n" > "${MANIFEST}"
+fi
 
 declare -a MODELS=(
   "control|${PARAMS_DIR}/graphcast_small_lamse.000000.npz"

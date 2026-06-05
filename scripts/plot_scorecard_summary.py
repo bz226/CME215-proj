@@ -14,11 +14,22 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 
 MODEL_LABELS = {
     "control": "Pre-finetuned",
+    "mse5000": "MSE-5000",
     "amse5000": "AMSE-5000",
     "amse25000": "AMSE-25000",
     "lamse0p1_lmax32_5000": "LAMSE-0.1-LMAX32",
     "lamse0p5_lmax127_5000": "LAMSE-0.5-LMAX127",
     "lamse0p3_lmax32_5000": "LAMSE-0.3-LMAX32",
+}
+
+MODEL_ORDER = {
+    "control": 0,
+    "mse5000": 1,
+    "amse5000": 2,
+    "amse25000": 3,
+    "lamse0p1_lmax32_5000": 4,
+    "lamse0p5_lmax127_5000": 5,
+    "lamse0p3_lmax32_5000": 6,
 }
 
 DEFAULT_FIELDS = ["z:500", "t:850", "2t", "10m_wind_speed", "msl"]
@@ -102,11 +113,15 @@ def model_label(model):
     return MODEL_LABELS.get(model, model.replace("_", " "))
 
 
+def iter_models(grouped):
+    return sorted(grouped.items(), key=lambda item: (MODEL_ORDER.get(item[0], 100), item[0]))
+
+
 def plot_error(field, grouped, metric, stat, out_path):
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(8.0, 5.0), constrained_layout=True)
-    for model, values in sorted(grouped.items()):
+    for model, values in iter_models(grouped):
         leads = [lead for lead, _ in values]
         errors = [error for _, error in values]
         ax.plot(leads, errors, marker="o", linewidth=2, label=model_label(model))
@@ -129,7 +144,7 @@ def plot_improvement(field, grouped, metric, stat, reference_model, out_path):
 
     fig, ax = plt.subplots(figsize=(8.0, 5.0), constrained_layout=True)
     any_line = False
-    for model, values in sorted(grouped.items()):
+    for model, values in iter_models(grouped):
         if model == reference_model:
             continue
         leads = []

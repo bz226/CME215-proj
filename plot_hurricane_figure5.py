@@ -25,6 +25,7 @@ from plot_prediction_error import add_derived, as_numpy_dataset, materialize_dat
 MODEL_LABELS = {
     "prefinetuned": "Pre-finetuned",
     "control": "Pre-finetuned",
+    "mse5000": "MSE-5000",
     "amse": "AMSE-5000",
     "amse5000": "AMSE-5000",
     "amse25000": "AMSE-25000",
