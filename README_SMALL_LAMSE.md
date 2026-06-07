@@ -392,15 +392,20 @@ This writes `scorecard_summary_with_mse.csv` and comparison PNGs under
 `MSE_SCORE_PATH`, `FIELDS`, `STAT`, `METRIC`, or `REFERENCE_MODEL` if needed.
 
 For the course-report figures, regenerate the top-level `plots/*.png` files so
-the existing report image paths pick up the MSE curve:
+the existing report image paths use MSE-5000 in place of AMSE-25000:
 
 ```bash
 EVAL_ROOT=runs/eval/2022_full_i12_retry REPORT_PLOTS_DIR=plots \
   bash scripts/build_report_plots_with_mse.sh
 ```
 
+By default this report wrapper plots pre-finetuned, MSE-5000, AMSE-5000,
+LAMSE-0.1-LMAX32, and LAMSE-0.5-LMAX127. It omits AMSE-25000. Set
+`INCLUDE_AMSE25000=1` only if you want the long-AMSE ablation back in the
+figures.
+
 To also regenerate the January 10 m wind showcase and spectral plot with an
-MSE panel/curve, run the same wrapper on Sherlock with:
+MSE panel/curve and no AMSE-25000 panel, run the same wrapper on Sherlock with:
 
 ```bash
 RUN_SINGLE_CASE=1 EVAL_ROOT=runs/eval/2022_full_i12_retry REPORT_PLOTS_DIR=plots \

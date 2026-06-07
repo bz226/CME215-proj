@@ -46,7 +46,9 @@ After each user prompt in this job, update this file with:
 - Revised `course_report.tex` against the style/content of the supplied `graphcast_lamse_project_draft (1).tex` and `cme_215_proj.pdf`: added the abstract, notation macros, MSE amplitude argument, PSD/coherence/AMSE definitions, and retained the final full-year negative-result narrative. Refreshed `plots/course_report_overleaf_bundle.zip`; `unzip -t` passes and the bundle is about 729 KB.
 - MSE fine-tuning is now the next useful control experiment. It should use the same 2016-2017 single-step training setup as AMSE/LAMSE, but with neither `--spectral-amse` nor `--lamse`, producing `$PARAMS_DIR/graphcast_small_mse.005000.npz` for held-out 2022 comparison.
 - MSE aggregate comparison graphs are now wired through `scripts/plot_mse_scorecard_comparison.sh`. After the MSE scorecard finishes, run it to build `scorecard_summary_with_mse.csv` and `plots_with_mse/*_error_by_lead.png` / `*_improvement_vs_amse5000.png`.
-- Report-style plots with MSE are now wired through `scripts/build_report_plots_with_mse.sh`. Its default aggregate step rewrites the top-level `plots/*_std_mean_*.png` files used by the report, and optional `RUN_SINGLE_CASE=1` / `RUN_HURRICANE=1` modes regenerate the January showcase/spectral and Hurricane Ian diagnostics with MSE included.
+- Report-style plots with MSE are now wired through `scripts/build_report_plots_with_mse.sh`. Its default aggregate step rewrites the top-level `plots/*_std_mean_*.png` files used by the report with MSE-5000 replacing AMSE-25000. Optional `RUN_SINGLE_CASE=1` / `RUN_HURRICANE=1` modes regenerate the January showcase/spectral and Hurricane Ian diagnostics with the same replacement; set `INCLUDE_AMSE25000=1` only to add the long-AMSE ablation back.
+- Latest MSE-inclusive Hurricane Ian plot appears to be the `best_track`-truth version: all models have large negative maximum-wind errors and positive pressure errors, consistent with comparing 1-degree grid-cell storm intensity to observed best-track intensity. Interpret the plot mainly by relative ranking, not absolute intensity bias.
+- Plot label cleanup: `compare_four_predictions.py` now formats LAMSE ids like `lamse0p1_lmax32` and `lamse0p5_lmax127` as report-ready `LAMSE-0.1-LMAX32` and `LAMSE-0.5-LMAX127`; this also fixes labels in hurricane diagnostics because they use the shared label helper.
 - Git hygiene note: `course_report.tex`, `plots.zip`, and `.DS_Store` should not be included in pushes; they are local/generated artifacts and are ignored.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.
 - LAMSE-5000 should use the same `plot_prediction_error.py` workflow as AMSE-5000, with checkpoint `$PARAMS_DIR/graphcast_small_lamse_lam0p1_lmax32.005000.npz` and output directory `runs/prediction_error/lamse5000_20220101`.
@@ -110,8 +112,9 @@ After each user prompt in this job, update this file with:
   - new convenience wrapper that rebuilds a summary CSV from existing scorecard Zarr stores and plots aggregate comparison graphs with MSE-5000 included;
   - reads Zarr paths directly instead of relying on `scorecard_manifest.tsv`, so it still works if a partial MSE-only scorecard submission rewrote the manifest.
 - `scripts/build_report_plots_with_mse.sh`
-  - new report-oriented plot wrapper that regenerates the existing top-level report plot filenames with MSE-5000 included;
-  - optionally regenerates the January single-case value/error/spectral plots and Hurricane Ian summary with MSE if run on Sherlock with the MSE checkpoint available.
+  - report-oriented plot wrapper that regenerates the existing top-level report plot filenames with MSE-5000 replacing AMSE-25000;
+  - optionally regenerates the January single-case value/error/spectral plots and Hurricane Ian summary with the same replacement if run on Sherlock with the MSE checkpoint available;
+  - supports `INCLUDE_AMSE25000=1` and `INCLUDE_LAMSE0P3=1` for opt-in ablation plots.
 - `plot_hurricane_figure5.py`
   - labels `mse5000` as `MSE-5000` when included in Figure-5-style storm maps.
 - `scripts/requirements_sherlock.txt`

@@ -33,6 +33,10 @@ DEFAULT_MODEL_LABELS = {
     "mse5000": "MSE-5000",
     "amse": "AMSE-5000",
     "lamse": "LAMSE-0.1-5000",
+    "lamse0p1_lmax32": "LAMSE-0.1-LMAX32",
+    "lamse0p1_lmax32_5000": "LAMSE-0.1-LMAX32",
+    "lamse0p5_lmax127": "LAMSE-0.5-LMAX127",
+    "lamse0p5_lmax127_5000": "LAMSE-0.5-LMAX127",
 }
 
 
@@ -102,6 +106,9 @@ def label_for_model(model: str) -> str:
     match = re.fullmatch(r"lamse(\d+)p(\d+)", model)
     if match:
         return f"LAMSE-{match.group(1)}.{match.group(2)}"
+    match = re.fullmatch(r"lamse(\d+)p(\d+)_lmax(\d+)(?:_\d+)?", model)
+    if match:
+        return f"LAMSE-{match.group(1)}.{match.group(2)}-LMAX{match.group(3)}"
     match = re.fullmatch(r"amse(\d+)", model)
     if match:
         return f"AMSE-{int(match.group(1))}"

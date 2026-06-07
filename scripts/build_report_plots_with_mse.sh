@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Regenerate report-style plots with the MSE-5000 control included.
+# Regenerate report-style plots with MSE-5000 replacing AMSE-25000.
 #
 # The default aggregate step rewrites the same top-level plot names used by the
 # current report, e.g. plots/10m_wind_speed_std_mean_error_by_lead.png.
+# The default report model set is:
+#   Pre-finetuned, MSE-5000, AMSE-5000, LAMSE-0.1-LMAX32, LAMSE-0.5-LMAX127.
+# Set INCLUDE_AMSE25000=1 only if you want the long-AMSE ablation back.
 # Optional single-case and hurricane steps need Sherlock/JAX and the trained
 # MSE checkpoint.
 #
@@ -34,11 +37,16 @@ declare -a SCORE_SPECS=(
   "control|${EVAL_ROOT}/control_score_2022.zarr|required"
   "mse5000|${MSE_SCORE_PATH}|required"
   "amse5000|${EVAL_ROOT}/amse5000_score_2022.zarr|required"
-  "amse25000|${EVAL_ROOT}/amse25000_score_2022.zarr|optional"
   "lamse0p1_lmax32_5000|${EVAL_ROOT}/lamse0p1_lmax32_5000_score_2022.zarr|optional"
   "lamse0p5_lmax127_5000|${EVAL_ROOT}/lamse0p5_lmax127_5000_score_2022.zarr|optional"
-  "lamse0p3_lmax32_5000|${EVAL_ROOT}/lamse0p3_lmax32_5000_score_2022.zarr|optional"
 )
+
+if [[ "${INCLUDE_AMSE25000:-0}" == "1" ]]; then
+  SCORE_SPECS+=("amse25000|${EVAL_ROOT}/amse25000_score_2022.zarr|optional")
+fi
+if [[ "${INCLUDE_LAMSE0P3:-0}" == "1" ]]; then
+  SCORE_SPECS+=("lamse0p3_lmax32_5000|${EVAL_ROOT}/lamse0p3_lmax32_5000_score_2022.zarr|optional")
+fi
 
 declare -a SCORE_ARGS=()
 for spec in "${SCORE_SPECS[@]}"; do
@@ -90,12 +98,12 @@ if [[ "${RUN_SINGLE_CASE:-0}" == "1" ]]; then
   APATH="${APATH:-${SCRATCH}/graphcast-small-lamse/era5_1deg_weatherbench2_2022}"
   SINGLE_CASE_DIR="${SINGLE_CASE_DIR:-${REPORT_PLOTS_DIR}/prediction_compare_with_mse}"
 
-  python3 compare_four_predictions.py \
+  single_case_args=(
+    python3 compare_four_predictions.py
     --prefinetuned-checkpoint "${PARAMS_DIR}/graphcast_small_lamse.000000.npz" \
     --amse-checkpoint "${PARAMS_DIR}/graphcast_small_amse.005000.npz" \
     --lamse-checkpoint "${PARAMS_DIR}/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
     --extra-checkpoint "mse5000=${PARAMS_DIR}/graphcast_small_mse.005000.npz" \
-    --extra-checkpoint "amse25000=${PARAMS_DIR}/graphcast_small_amse.025000.npz" \
     --extra-checkpoint "lamse0p5_lmax127=${PARAMS_DIR}/graphcast_small_lamse_lam0p5_lmax127.005000.npz" \
     --apath "${APATH}" \
     --norm-factors stats \
@@ -106,6 +114,14 @@ if [[ "${RUN_SINGLE_CASE:-0}" == "1" ]]; then
     --reference-model amse \
     --out-dir "${SINGLE_CASE_DIR}" \
     --overwrite
+  )
+  if [[ "${INCLUDE_AMSE25000:-0}" == "1" ]]; then
+    single_case_args+=(--extra-checkpoint "amse25000=${PARAMS_DIR}/graphcast_small_amse.025000.npz")
+  fi
+  if [[ "${INCLUDE_LAMSE0P3:-0}" == "1" ]]; then
+    single_case_args+=(--extra-checkpoint "lamse0p3=${PARAMS_DIR}/graphcast_small_lamse_lam0p3_lmax32.005000.npz")
+  fi
+  "${single_case_args[@]}"
 
   echo "Report single-case plots with MSE: ${SINGLE_CASE_DIR}"
 fi
@@ -132,7 +148,8 @@ if [[ "${RUN_HURRICANE:-0}" == "1" ]]; then
   APATH="${APATH:-${SCRATCH}/graphcast-small-lamse/era5_1deg_weatherbench2_2022}"
   HURRICANE_DIR="${HURRICANE_DIR:-${REPORT_PLOTS_DIR}/hurricane_ian_with_mse}"
 
-  python3 hurricane_performance_check.py \
+  hurricane_args=(
+    python3 hurricane_performance_check.py
     --track-file "${TRACK_FILE}" \
     --storm-name IAN \
     --storm-year 2022 \
@@ -141,7 +158,6 @@ if [[ "${RUN_HURRICANE:-0}" == "1" ]]; then
     --checkpoint "prefinetuned=${PARAMS_DIR}/graphcast_small_lamse.000000.npz" \
     --checkpoint "mse5000=${PARAMS_DIR}/graphcast_small_mse.005000.npz" \
     --checkpoint "amse5000=${PARAMS_DIR}/graphcast_small_amse.005000.npz" \
-    --checkpoint "amse25000=${PARAMS_DIR}/graphcast_small_amse.025000.npz" \
     --checkpoint "lamse0p1_lmax32=${PARAMS_DIR}/graphcast_small_lamse_lam0p1_lmax32.005000.npz" \
     --checkpoint "lamse0p5_lmax127=${PARAMS_DIR}/graphcast_small_lamse_lam0p5_lmax127.005000.npz" \
     --init-start "${IAN_INIT_START:-19 Sep 2022 00:00}" \
@@ -152,6 +168,14 @@ if [[ "${RUN_HURRICANE:-0}" == "1" ]]; then
     --truth-source "${IAN_TRUTH_SOURCE:-analysis}" \
     --out-dir "${HURRICANE_DIR}" \
     --overwrite
+  )
+  if [[ "${INCLUDE_AMSE25000:-0}" == "1" ]]; then
+    hurricane_args+=(--checkpoint "amse25000=${PARAMS_DIR}/graphcast_small_amse.025000.npz")
+  fi
+  if [[ "${INCLUDE_LAMSE0P3:-0}" == "1" ]]; then
+    hurricane_args+=(--checkpoint "lamse0p3_lmax32=${PARAMS_DIR}/graphcast_small_lamse_lam0p3_lmax32.005000.npz")
+  fi
+  "${hurricane_args[@]}"
 
   echo "Report hurricane plot with MSE: ${HURRICANE_DIR}/hurricane_error_summary.png"
 fi
