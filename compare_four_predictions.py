@@ -32,7 +32,7 @@ DEFAULT_MODEL_LABELS = {
     "mse": "MSE-5000",
     "mse5000": "MSE-5000",
     "amse": "AMSE-5000",
-    "lamse": "LAMSE-0.1-5000",
+    "lamse": "LAMSE-0.1-LMAX32",
     "lamse0p1_lmax32": "LAMSE-0.1-LMAX32",
     "lamse0p1_lmax32_5000": "LAMSE-0.1-LMAX32",
     "lamse0p5_lmax127": "LAMSE-0.5-LMAX127",
@@ -479,7 +479,7 @@ def plot_spectra(rows: list[dict], field: str, lead_hours: int, path: Path) -> N
     for ax in axes:
         ax.grid(True, alpha=0.25)
         ax.legend(loc="best")
-    fig.suptitle(f"{field} lead={lead_hours}h AMSE-style spectral diagnostics")
+    fig.suptitle(f"{field} lead={lead_hours}h spectral diagnostics")
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=160)
     plt.close(fig)

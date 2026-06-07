@@ -49,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="NAME=PATH",
-        help="Checkpoint to score. May be repeated. Defaults to prefinetuned, AMSE-5000, and LAMSE-0.1-5000.",
+        help="Checkpoint to score. May be repeated. Defaults to prefinetuned, AMSE-5000, and LAMSE-0.1-LMAX32.",
     )
     parser.add_argument("--init-start", type=parse_date, required=True)
     parser.add_argument("--init-end", type=parse_date, required=True)
