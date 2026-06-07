@@ -30,6 +30,8 @@ STAT="${STAT:-std}"
 METRIC="${METRIC:-mean}"
 REFERENCE_MODEL="${REFERENCE_MODEL:-amse5000}"
 MSE_SCORE_PATH="${MSE_SCORE_PATH:-${EVAL_ROOT}/mse5000_score_2022.zarr}"
+REPORT_OVERVIEW_PNG="${REPORT_OVERVIEW_PNG:-${REPORT_PLOTS_DIR}/deterministic_error_summary.png}"
+REPORT_OVERVIEW_TITLE="${REPORT_OVERVIEW_TITLE:-Full-year 2022 deterministic error summaries (lower is better)}"
 
 mkdir -p "${REPORT_PLOTS_DIR}"
 
@@ -79,9 +81,12 @@ python3 scripts/plot_scorecard_summary.py \
   --fields "${FIELD_ARGS[@]}" \
   --stat "${STAT}" \
   --metric "${METRIC}" \
-  --reference-model "${REFERENCE_MODEL}"
+  --reference-model "${REFERENCE_MODEL}" \
+  --overview-output "${REPORT_OVERVIEW_PNG}" \
+  --overview-title "${REPORT_OVERVIEW_TITLE}"
 
 echo "Report aggregate plots with MSE: ${REPORT_PLOTS_DIR}"
+echo "Report aggregate overview with MSE: ${REPORT_OVERVIEW_PNG}"
 
 if [[ "${RUN_SINGLE_CASE:-0}" == "1" ]]; then
   if [[ -z "${SCRATCH:-}" && -z "${APATH:-}" ]]; then

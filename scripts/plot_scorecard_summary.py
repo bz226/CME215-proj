@@ -34,6 +34,14 @@ MODEL_ORDER = {
 
 DEFAULT_FIELDS = ["z:500", "t:850", "2t", "10m_wind_speed", "msl"]
 
+FIELD_TITLES = {
+    ("z", "500"): "z500",
+    ("t", "850"): "t850",
+    ("2t", ""): "2m temperature",
+    ("10m_wind_speed", ""): "10m wind speed",
+    ("msl", ""): "MSL pressure",
+}
+
 
 def parse_field(spec):
     if ":" in spec:
@@ -113,6 +121,11 @@ def model_label(model):
     return MODEL_LABELS.get(model, model.replace("_", " "))
 
 
+def field_title(field):
+    key = (field["variable"], norm_level(field["level"]))
+    return FIELD_TITLES.get(key, field["label"])
+
+
 def iter_models(grouped):
     return sorted(grouped.items(), key=lambda item: (MODEL_ORDER.get(item[0], 100), item[0]))
 
@@ -174,6 +187,63 @@ def plot_improvement(field, grouped, metric, stat, reference_model, out_path):
     return True
 
 
+def plot_overview(fields, rows, metric, stat, lead_hours, out_path, title):
+    import matplotlib.pyplot as plt
+
+    ncols = 3
+    nrows = 2
+    fig, axes = plt.subplots(nrows, ncols, figsize=(10.5, 6.2), constrained_layout=True)
+    flat_axes = axes.ravel()
+    legend_handles = []
+    legend_labels = []
+    any_panel = False
+
+    for index, field in enumerate(fields[: ncols * nrows - 1]):
+        ax = flat_axes[index]
+        selected = select_rows(rows, field, stat, metric, lead_hours)
+        if not selected:
+            ax.set_visible(False)
+            print(f"Skipping overview panel {field['spec']}: no matching rows")
+            continue
+        grouped = group_series(selected, metric)
+        for model, values in iter_models(grouped):
+            leads_days = [lead / 24.0 for lead, _ in values]
+            errors = [error for _, error in values]
+            (line,) = ax.plot(
+                leads_days,
+                errors,
+                marker="o",
+                linewidth=1.5,
+                markersize=3.0,
+                label=model_label(model),
+            )
+            if model_label(model) not in legend_labels:
+                legend_handles.append(line)
+                legend_labels.append(model_label(model))
+        ax.set_title(field_title(field), fontsize=11)
+        ax.set_xlabel("Lead time (days)")
+        ax.set_ylabel(f"Weighted {stat} error")
+        ax.grid(True, alpha=0.25)
+        any_panel = True
+
+    for ax in flat_axes[len(fields[: ncols * nrows - 1]) :]:
+        ax.set_visible(False)
+
+    legend_ax = flat_axes[-1]
+    legend_ax.set_visible(True)
+    legend_ax.axis("off")
+    if legend_handles:
+        legend_ax.legend(legend_handles, legend_labels, loc="center", frameon=True)
+
+    fig.suptitle(title, fontsize=14)
+    if any_panel:
+        fig.savefig(out_path, dpi=180)
+        plt.close(fig)
+        return True
+    plt.close(fig)
+    return False
+
+
 def write_rank_table(field, grouped, metric, out_path):
     leads = sorted({lead for values in grouped.values() for lead, _ in values})
     with out_path.open("w", newline="") as f:
@@ -198,6 +268,17 @@ def main():
     parser.add_argument("--metric", choices=["mean", "median"], default="mean")
     parser.add_argument("--reference-model", default="amse5000")
     parser.add_argument("--lead-hours", type=float, nargs="*", default=None)
+    parser.add_argument(
+        "--overview-output",
+        type=Path,
+        default=None,
+        help="Optional multi-panel deterministic error overview PNG.",
+    )
+    parser.add_argument(
+        "--overview-title",
+        default="Full-year 2022 deterministic error summaries (lower is better)",
+        help="Title for --overview-output.",
+    )
     args = parser.parse_args()
 
     try:
@@ -233,6 +314,19 @@ def main():
         rank_path = out_dir / f"{stem}_rankings.csv"
         write_rank_table(field, grouped, args.metric, rank_path)
         written.append(rank_path)
+
+    if args.overview_output is not None:
+        args.overview_output.parent.mkdir(parents=True, exist_ok=True)
+        if plot_overview(
+            args.fields,
+            rows,
+            args.metric,
+            args.stat,
+            args.lead_hours,
+            args.overview_output,
+            args.overview_title,
+        ):
+            written.append(args.overview_output)
 
     for path in written:
         print(f"Wrote {path}")

@@ -402,7 +402,9 @@ EVAL_ROOT=runs/eval/2022_full_i12_retry REPORT_PLOTS_DIR=plots \
 By default this report wrapper plots pre-finetuned, MSE-5000, AMSE-5000,
 LAMSE-0.1-LMAX32, and LAMSE-0.5-LMAX127. It omits AMSE-25000. Set
 `INCLUDE_AMSE25000=1` only if you want the long-AMSE ablation back in the
-figures.
+figures. It also writes a combined overview figure to
+`plots/deterministic_error_summary.png` with the title
+`Full-year 2022 deterministic error summaries (lower is better)`.
 
 To also regenerate the January 10 m wind showcase and spectral plot with an
 MSE panel/curve and no AMSE-25000 panel, run the same wrapper on Sherlock with:

@@ -545,7 +545,7 @@ def main() -> None:
         plot_summary(
             summary,
             plot_path,
-            f"{args.storm_name.upper()} {args.storm_year} paper-style hurricane diagnostics ({truth_label})",
+            f"{args.storm_name.upper()} {args.storm_year} hurricane diagnostics ({truth_label})",
         )
         print(f"Wrote {plot_path}")
     print("complete")
