@@ -461,7 +461,7 @@ python3 hurricane_performance_check.py \
   --init-interval-hours 24 \
   --forecast-length 240 \
   --lead-hours 6 12 18 24 36 48 72 96 120 144 168 192 216 240 \
-  --truth-source best_track \
+  --truth-source analysis \
   --out-dir runs/hurricane_check/ian2022 \
   --overwrite
 ```
@@ -472,7 +472,10 @@ Outputs:
 - `runs/hurricane_check/ian2022/hurricane_mean_errors.csv`
 - `runs/hurricane_check/ian2022/hurricane_error_summary.png`
 
-For a model-grid-consistent sanity check, switch to `--truth-source analysis`;
-this still uses best-track position as the initial search guide, but compares
-wind and pressure against the staged analysis fields instead of best-track
-intensity.
+Use `--truth-source analysis` for the main report figure; this still uses
+best-track position as the initial search guide, but compares wind, pressure,
+and center position against the staged 1-degree analysis fields. Use
+`--truth-source best_track` only as an observed-intensity sensitivity check.
+In best-track mode, the 1-degree model will usually show large negative wind
+bias and positive pressure bias because the gridded storm core is much smoother
+than the observed best-track intensity estimate.

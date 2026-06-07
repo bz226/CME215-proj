@@ -1,6 +1,6 @@
 # GraphCast Small LAMSE Progress
 
-Updated: 2026-06-04
+Updated: 2026-06-07
 
 ## Working Rule
 
@@ -48,6 +48,7 @@ After each user prompt in this job, update this file with:
 - MSE aggregate comparison graphs are now wired through `scripts/plot_mse_scorecard_comparison.sh`. After the MSE scorecard finishes, run it to build `scorecard_summary_with_mse.csv` and `plots_with_mse/*_error_by_lead.png` / `*_improvement_vs_amse5000.png`.
 - Report-style plots with MSE are now wired through `scripts/build_report_plots_with_mse.sh`. Its default aggregate step rewrites the top-level `plots/*_std_mean_*.png` files used by the report with MSE-5000 replacing AMSE-25000. Optional `RUN_SINGLE_CASE=1` / `RUN_HURRICANE=1` modes regenerate the January showcase/spectral and Hurricane Ian diagnostics with the same replacement; set `INCLUDE_AMSE25000=1` only to add the long-AMSE ablation back.
 - Latest MSE-inclusive Hurricane Ian plot appears to be the `best_track`-truth version: all models have large negative maximum-wind errors and positive pressure errors, consistent with comparing 1-degree grid-cell storm intensity to observed best-track intensity. Interpret the plot mainly by relative ranking, not absolute intensity bias.
+- Hurricane Ian tracking/intensity plotting has been made less error-prone: `hurricane_performance_check.py` now defaults to `--truth-source analysis`, prints a warning for `best_track`, and writes the truth source into the plot title. For the report, rerun Ian diagnostics with analysis truth; keep best-track truth only as a limitation/sensitivity figure because 1-degree storm-core intensity is not comparable to observed best-track intensity.
 - Plot label cleanup: `compare_four_predictions.py` now formats LAMSE ids like `lamse0p1_lmax32` and `lamse0p5_lmax127` as report-ready `LAMSE-0.1-LMAX32` and `LAMSE-0.5-LMAX127`; this also fixes labels in hurricane diagnostics because they use the shared label helper.
 - Git hygiene note: `course_report.tex`, `plots.zip`, and `.DS_Store` should not be included in pushes; they are local/generated artifacts and are ignored.
 - If shell `set -u` is active, define `PARAMS_DIR` before referencing `$PARAMS_DIR`: `export PARAMS_DIR="${PARAMS_DIR:-${SCRATCH:?Set SCRATCH or PARAMS_DIR}/graphcast-small-lamse/params}"`.

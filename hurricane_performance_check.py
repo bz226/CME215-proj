@@ -59,10 +59,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--truth-source",
         choices=("best_track", "analysis"),
-        default="best_track",
+        default="analysis",
         help=(
-            "best_track compares model intensity to the supplied track wind/pressure. "
-            "analysis compares model intensity to ERA5/analysis fields in the same search window."
+            "analysis compares model intensity and center position to ERA5/analysis fields in the same search window. "
+            "best_track compares against supplied observed track wind/pressure and is mostly a sensitivity check for "
+            "1-degree fields."
         ),
     )
     parser.add_argument("--min-best-track-wind-kt", type=float, default=34.0)
@@ -394,6 +395,12 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     print("devices", jax.devices())
+    if args.truth_source == "best_track":
+        print(
+            "Warning: --truth-source best_track compares 1-degree grid-cell storm intensity "
+            "against observed best-track intensity. Large negative wind bias and positive "
+            "pressure bias are expected; use --truth-source analysis for the main model-grid comparison."
+        )
     track = read_track(args.track_file, args.storm_name, args.storm_year)
     track = track[pd.to_datetime(track["time"]).dt.minute == 0].copy()
     if args.min_best_track_wind_kt is not None:
@@ -534,10 +541,11 @@ def main() -> None:
     print(f"Wrote {summary_path}")
     if not args.no_plots and not summary.empty:
         plot_path = args.out_dir / "hurricane_error_summary.png"
+        truth_label = "analysis truth" if args.truth_source == "analysis" else "best-track truth"
         plot_summary(
             summary,
             plot_path,
-            f"{args.storm_name.upper()} {args.storm_year} paper-style hurricane diagnostics",
+            f"{args.storm_name.upper()} {args.storm_year} paper-style hurricane diagnostics ({truth_label})",
         )
         print(f"Wrote {plot_path}")
     print("complete")
